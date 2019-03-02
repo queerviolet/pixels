@@ -1,0 +1,22 @@
+{
+  "name": "pixels",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "parcel": "^1.11.0",
+    "parcel-plugin-writable": "file:parcel-plugin-writable"
+  },
+  "devDependencies": {
+    "@types/text-encoding": "0.0.35",
+    "rxjs": "^6.4.0",
+    "symbol-observable": "^1.2.0",
+    "text-encoding": "^0.7.0"
+  }
+}

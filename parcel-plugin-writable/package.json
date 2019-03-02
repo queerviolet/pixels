@@ -1,0 +1,19 @@
+{
+  "name": "parcel-plugin-writable",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "touch": "^3.1.0",
+    "ws": "^6.1.4"
+  },
+  "devDependencies": {
+    "typescript": "^3.3.3333"
+  }
+}
