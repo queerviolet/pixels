@@ -10,13 +10,16 @@ addEventListener('mousemove', ev => {
 import GL from 'luma.gl/constants'
 import { Matrix4 } from 'math.gl'
 import { AnimationLoop, VertexArray, Buffer, Program, Cube, } from 'luma.gl'
-import { Vec2Buffer } from './buffer';
+import { Stream } from './buffer';
 
 new AnimationLoop({
   webgl1: false,
   useDevicePixels: true,
   onInitialize({ gl, canvas }) {
-    const positions = new Vec2Buffer(gl, 100)
+    const positions = new Stream(gl, {
+      size: 2,
+      type: GL.FLOAT,
+    })
     stroke.value.subscribe(data => {
       positions.push(data)
     })
@@ -28,7 +31,7 @@ new AnimationLoop({
 
         void main() {
           // gl_Position = vec4(pos.x / 600.0, pos.y / 600.0, 1.0, 1.0);
-          gl_Position = uProjection * vec4(pos.x, pos.y, -300.0, 1.0);
+          gl_Position = uProjection * vec4(pos.x, pos.y, 0.0, 1.0);
           gl_PointSize = 16.0;
         }
       `,
@@ -58,16 +61,12 @@ new AnimationLoop({
     gl.clearColor(0.0, 0.0, 0.0, 1.0)
     gl.clear(GL.COLOR_BUFFER_BIT)
     if (!positions.buffer) return
-    console.log(positions.buffer.byteLength)
     vertexArray.setAttributes({
       pos: positions.buffer,
     })
    
-    // vertexArray.setAttributes({
-    //   pos: new Float32Array([300, 300])
-    // })
 
-    const uProjection = new Matrix4().ortho({left: 0, right: canvas.width, top: 0, bottom: canvas.height})
+    const uProjection = new Matrix4().ortho({left: 0, right: canvas.width, top: 0, bottom: canvas.height, near: 0.1, far: -1000 })
     ;(window as any).film = uProjection
     program.setUniforms({
       uProjection

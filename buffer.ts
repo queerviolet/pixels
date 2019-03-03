@@ -1,5 +1,5 @@
 import GL from 'luma.gl/constants'
-import { Buffer } from 'luma.gl'
+import { Buffer, _Accessor as Accessor } from 'luma.gl'
 
 declare interface Buffer {
   byteLength: number
@@ -7,23 +7,15 @@ declare interface Buffer {
   copyData: Function
 }
 
-export class Vec2Buffer {
-  static accessor: any = {
-    size: 2,
-    type: GL.FLOAT,
-  }
-
-  static elementSize = 4 * 2
-
-  constructor(gl: any, sizeOrContent: number | Float32Array) {
-    this.gl = gl
-    this.allocBuffer(sizeOrContent)
+export class Stream {
+  constructor(private gl: any, private accessor: any, count?: number) {
+    count && this.allocBuffer(count * this.elementSize)
   }
 
   public buffer: Buffer
 
   get elementSize(): number {
-    return Vec2Buffer.elementSize
+    return Accessor.getBytesPerVertex(this.accessor)
   }
 
   get count() {
@@ -32,24 +24,16 @@ export class Vec2Buffer {
 
   public push(data: ArrayBufferView) {
     const neededBytes = data.byteLength + this.offset
-    if (this.buffer.byteLength < neededBytes) {
-      this.allocBuffer(Math.ceil((neededBytes * 2) / this.elementSize))
+    if (!this.buffer || this.buffer.byteLength < neededBytes) {
+      this.allocBuffer(neededBytes * 2)
     }
     this.offset = set(this.buffer, data, this.offset)
   }
 
-  private gl: any
   private offset: number = 0
 
-  private allocBuffer(sizeOrContent: number | Float32Array) {
-    const { elementSize, accessor } = Vec2Buffer    
-    const byteLength = typeof sizeOrContent === 'number'
-      ? elementSize * sizeOrContent
-      : elementSize * Math.ceil(sizeOrContent.byteLength / elementSize)
-
-    const { buffer, offset } = concat(this.gl, byteLength, accessor,
-      this.buffer,
-      ArrayBuffer.isView(sizeOrContent) && sizeOrContent)
+  private allocBuffer(byteLength: number) {
+    const { buffer, offset } = concat(this.gl, byteLength, this.accessor, this.buffer)
 
     this.buffer = buffer
     this.offset = offset
@@ -70,6 +54,8 @@ function concat(gl: any, byteLength: number, accessor: any, ...srcs: (DataSource
 }
 
 function set(buffer: Buffer, data: DataSource, offset: number) {
+  if (!data.byteLength) { return offset }
+
   if (ArrayBuffer.isView(data)) {
     buffer.subData({
       data,
