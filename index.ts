@@ -10,31 +10,15 @@ addEventListener('mousemove', ev => {
 import GL from 'luma.gl/constants'
 import { Matrix4 } from 'math.gl'
 import { AnimationLoop, VertexArray, Buffer, Program, Cube, } from 'luma.gl'
+import { Vec2Buffer } from './buffer';
 
 new AnimationLoop({
   webgl1: false,
   useDevicePixels: true,
   onInitialize({ gl, canvas }) {
-    const ref = {
-      value: new Buffer(gl, {
-        data: new Float32Array(1024),
-        accessor: {
-          size: 2,
-          type: GL.FLOAT,
-        }
-      }),
-      size: 0,
-    }
+    const positions = new Vec2Buffer(gl, 100)
     stroke.value.subscribe(data => {
-      const f32 = new Float32Array(data.buffer)
-      if (!f32.length) return
-
-      console.log(ref.value.reallocate(8 * ref.size + data.byteLength))
-
-      ref.value.subData({ data: f32, offset: ref.size * 8 })
-      console.log(ref.size)
-      ref.size += f32.length
-      console.log(ref.size)
+      positions.push(data)
     })
 
     const program = new Program(gl, {
@@ -65,7 +49,7 @@ new AnimationLoop({
     
     return {
       program,  
-      positions: ref,
+      positions,
       vertexArray,
     }
   },
@@ -73,9 +57,10 @@ new AnimationLoop({
   onRender({ gl, program, canvas, vertexArray, positions }) {
     gl.clearColor(0.0, 0.0, 0.0, 1.0)
     gl.clear(GL.COLOR_BUFFER_BIT)
-    if (!positions.value) return
+    if (!positions.buffer) return
+    console.log(positions.buffer.byteLength)
     vertexArray.setAttributes({
-      pos: positions.value,
+      pos: positions.buffer,
     })
    
     // vertexArray.setAttributes({
@@ -90,7 +75,7 @@ new AnimationLoop({
 
     program.draw({
       vertexArray,
-      vertexCount: positions.size / 2,
+      vertexCount: positions.count,
       drawMode: GL.POINTS,      
     })
   }
