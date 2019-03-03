@@ -1,7 +1,7 @@
 const { dirname, relative } = require('path')
 
 const clientPath = require.resolve('./client.ts')
-class WritableAsset extends module.parent.require('./assets/JSAsset') {
+class WritableAsset extends module.parent.require('./assets/JSAsset') {  
   async load() {
     const rel = relative(this.options.rootDir, this.name)
     return `

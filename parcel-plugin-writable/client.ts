@@ -19,13 +19,12 @@ export default class Client {
 
   private ready = false
   private readonly sock: WebSocket
-  private readonly queue: any = []
-  private data: ArrayBuffer = new ArrayBuffer(0)
+  private data: number[] = []
   private observers: Observer<any>[] = []
 
   public [IsObservable]() {
     return Observable.create((s: Observer<any>) => {
-      if (this.ready) s.next(this.data)
+      if (this.ready) s.next(Uint8Array.from(this.data))      
       this.observers.push(s)
       return () => {
         const {observers} = this
@@ -39,53 +38,35 @@ export default class Client {
     return this[IsObservable]()
   }
 
-  public push(data: ArrayBuffer) {
+  public push(data: Uint8Array) {
     if (!this.ready) return
-    this.setValue(concat(this.data, data))
-    this.sock.send(data)
+    this.data.push(...data)    
+    this.emit(data)
+    this.sock.send(Uint8Array.from(data))
   }
 
-  public set(value: any) {
-    const str = JSON.stringify(value)
-    this.setValue(str)
-    this.sock.send(str)
-  }
-
-  private setValue(data: any) {    
-    this.data = data
+  private emit(data: any) {
     this.observers.forEach(o => o.next(data))
   }
 
   onMessage = (mev: MessageEvent) => {
-    console.log(mev)
     this.ready = true
     if (mev.data instanceof ArrayBuffer) {
-      this.setValue(concat(this.data, mev.data))
-    }
-    if (typeof mev.data === 'string') {
-      this.setValue(JSON.parse(mev.data))
+      this.emit(mev.data)
+      this.data.push(...new Uint8Array(mev.data))
+      return
     }
   }
 
   onError = (eev: ErrorEvent) => {
     this.ready = false
-    this.observers.forEach(o => o.complete())
+    this.observers.forEach(o => o.error(eev.error))
     this.observers = []
   }
 
-  onClose = (clev: CloseEvent) => {}
-}
-
-import { TextEncoder } from 'text-encoding'
-const encoder = new TextEncoder()
-
-
-function concat(a: ArrayBuffer | string, b: ArrayBuffer): ArrayBuffer {
-  if (typeof a === 'string') {
-    a = encoder.encode(a).buffer
+  onClose = (clev: CloseEvent) => {
+    this.ready = false
+    this.observers.forEach(o => o.complete())
+    this.observers = []
   }
-  const out = new Uint8Array(a.byteLength + b.byteLength)
-  out.set(new Uint8Array(a))
-  out.set(new Uint8Array(b), a.byteLength)
-  return out
 }

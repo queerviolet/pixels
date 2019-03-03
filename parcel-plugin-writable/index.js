@@ -1,54 +1,63 @@
+const debug = require('debug')('writable')
 const { promisify } = require('util')
 const touch = promisify(require('touch'))
-const { resolve, basename } = require('path')
+const { join, resolve, dirname, relative, basename } = require('path')
 const copyFile = promisify(require('fs').copyFile)
 const exists = promisify(require('fs').exists)
-const { readFile, writeFile, createWriteStream } = require('fs')
+const mkdir = promisify(require('fs').mkdir)
+const { createWriteStream } = require('fs')
+const readFile = promisify(require('fs').readFile)
+const writeFile = promisify(require('fs').writeFile)
 const { Server } = require('ws')
 const url = require('url')
+const clientPath = require.resolve('./client.ts')
 
-async function createIfNeeded(varFile) {
-  const baseFile = basename(varFile, '.var')
+async function createVar(root, path) {
+  const stubFile = resolve(root, '.stub', path + '.js')
+  const relClientPath = relative(dirname(stubFile), clientPath)
+  await mkdir(dirname(stubFile), { recursive: true })
+  await writeFile(stubFile, `
+    const Client = require(${JSON.stringify(relClientPath)}).default
+    module.exports = Client.for(${JSON.stringify(path)})
+  `)
 
-  if (await exists(baseFile)) {
-    await copyFile(baseFile, varFile)
-  } else {
-    console.log('touching...', varFile)
-    await touch(varFile)
-  }
+  return stubFile
 }
+
 const extendResolve =
-  resolveDep =>
-    async function(asset, dep, install = true) {
-      const isLocalFile = /^[/~.]/.test(dep.name)
-      if (isLocalFile && dep.name.endsWith('.var'))
-        await createIfNeeded(resolve(asset.name, '..', dep.name))
-      return resolveDep.call(this, asset, dep, install)
-    }
+  base => async function(input, parent) {
+    if (!input.startsWith('var:')) return base.call(this, input, parent)
 
-const files = {}
-const open = path =>
-  files[path] = files[path] || (files[path] = File(path))
+    const { rootDir: root } = this.options
+    input = input.slice('var:'.length)
+    const path = relative(root, resolve(parent, '..', input))
 
-const concat = (a, b) => {
-  const c = Buffer.alloc(a.length + b.length)
-  c.set(a)
-  c.set(b, a.length)
-  return c
-}
+    const stubFile = await createVar(root, path)
+    const out = await base.call(this, relative(dirname(parent), stubFile), parent)
+    return out
+  }
 
-function File(path) {
+function File(root, name) {
+  const path = join(root, '.var', name) 
   const observers = []
-  let data = null
-  readFile(path, (err, d) => err ? console.error(err) : set(d))
+  
+  const get = async () => {
+    try {
+      await mkdir(dirname(path), { recursive: true })
+      await touch(path)
+      return readFile(path)
+    } catch {
+      return Buffer.alloc(0)
+    }
+  }
+  debug('Opening write for', path)
   const out = createWriteStream(path, { flags: 'a' })  
   return {
     path,
-    set,
     push,
     subscribe(s) {
       observers.push(s)
-      if (data) s.send(data)
+      get().then(data => s.send(data))
       return () => {
         const idx = observers.indexOf(s)
         idx >= 0 && observers.splice(idx, 1)
@@ -56,28 +65,18 @@ function File(path) {
     }
   }
 
-  function set(value, origin) {
-    setValue(value, origin)
-    origin && writeFile(path, value, console.error)
-  }
-
   function push(value, origin) {
-    if (!data) return
-    setValue(concat(data, value), origin)
+    observers.forEach(o => o !== origin && o.send(value))
     out.write(value)
-  }
-
-  function setValue(val, origin) {
-    data = val
-    console.log('data=', data)
-    observers.forEach(o => o !== origin && o.send(val))
   }
 }
 
+const Resolver = module.parent.require('../Resolver')
+
 module.exports = bundler => {
-  console.log('Init writable')
-  const { rootDir } = bundler.options
-  console.log('  rootDir: ', rootDir)
+  const files = {}
+  const open = path =>
+    files[path] = files[path] || (files[path] = File(bundler.options.rootDir, path))
 
   const wss = new Server({ noServer: true })
 
@@ -93,8 +92,7 @@ module.exports = bundler => {
   })
   
   wss.on('connection', (ws, request) => {
-    const absPath = resolve(rootDir, request.path)
-    const file = open(absPath)
+    const file = open(request.path)
     const dispose = file.subscribe(ws)
     ws.on('message', onMessage)
     ws.on('close', onClose)
@@ -103,7 +101,6 @@ module.exports = bundler => {
       if (data instanceof Buffer) {
         return file.push(data, ws)
       }
-      return file.set(data, ws)
     }
 
     function onClose() {
@@ -111,9 +108,10 @@ module.exports = bundler => {
     }
   })
 
-  const { prototype } = bundler.constructor
-  prototype.resolveDep = extendResolve(prototype.resolveDep)
+  // const { prototype } = bundler.constructor
+  // prototype.resolveDep = extendResolve(prototype.resolveDep)
 
   // console.log(bundler)
-  bundler.addAssetType('.var', require.resolve('./asset.js'))
+  Resolver.prototype.resolve = extendResolve(Resolver.prototype.resolve)
+  // bundler.addAssetType('.var', require.resolve('./asset.js'))
 }
