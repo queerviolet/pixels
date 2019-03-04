@@ -2,7 +2,7 @@ import { applyLetterbox } from './letterbox'
 
 applyLetterbox()
 
-const stroke = require('var:stroke')
+import stroke from 'var:stroke'
 
 import GL from 'luma.gl/constants'
 import { Matrix4 } from 'math.gl'
@@ -18,7 +18,9 @@ new AnimationLoop({
       type: GL.FLOAT,
     })
     stroke.updates.subscribe(m => {
-      m.data ? positions.push(m.data) : positions.clear()
+      m.type === 'clear'
+        ? positions.clear()
+        : positions.push(m.data)
     })
 
     const pt = new Float32Array(2)

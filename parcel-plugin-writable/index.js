@@ -15,12 +15,14 @@ const chokidar = require('chokidar')
 const clientPath = require.resolve('./client.ts')
 
 async function createVar(root, path) {
-  const stubFile = resolve(root, '.stub', path + '.js')
+  const stubFile = resolve(root, '.stub', path + '.ts')
   const relClientPath = relative(dirname(stubFile), clientPath)
   await mkdir(dirname(stubFile), { recursive: true })
   await writeFile(stubFile, `
-    const Client = require(${JSON.stringify(relClientPath)}).default
-    module.exports = Client.for(${JSON.stringify(path)})
+    import Stream from ${JSON.stringify(
+      relClientPath.slice(0, relClientPath.length - '.ts'.length)
+    )}
+    export default Stream.for(${JSON.stringify(path)})
   `)
 
   return stubFile
@@ -52,7 +54,7 @@ function File(path) {
     }
   }
   let out
-  let lastPush = 0
+  let lastActivity = 0
   didChange()
   return {
     path,
@@ -71,13 +73,17 @@ function File(path) {
   function push(value, origin) {
     observers.forEach(o => o !== origin && o.send(value))
     out.write(value)
-    lastPush = Date.now()
+    lastActivity = Date.now()
   }
 
   async function didChange() {
     // Ignore change events if we've recently written the file.
-    if (lastPush > Date.now() - 250) return
-    out && out.close()
+    if (lastActivity > Date.now() - 250) return
+    lastActivity = Date.now()
+    if (out) {
+      debug('Will reopen', path)
+      out.close()
+    }
     debug('Opening write for', path)
     out = createWriteStream(path, { flags: 'a' })
     if (observers.length) {
@@ -101,9 +107,12 @@ module.exports = bundler => {
     return files[vPath] = files[vPath] ||
       (files[vPath] = File(vPath))
   }
-  watcher.on('add', f => files[f] && files[f].didChange())
-  watcher.on('change', f => files[f] && files[f].didChange())
-  watcher.on('unlink', f => files[f] && files[f].didChange())
+  const fileChanged = path => {
+    files[path] && files[path].didChange()
+  }
+  watcher.on('add', fileChanged)
+  watcher.on('change', fileChanged)
+  watcher.on('unlink', fileChanged)
 
   const wss = new Server({ noServer: true })
 

@@ -23,7 +23,7 @@ export class Stream {
     return Math.ceil(this.offset / this.elementSize)
   }
 
-  public push(data: ArrayBufferView) {
+  public push(data: ArrayBuffer | ArrayBufferView) {
     const neededBytes = data.byteLength + this.offset
     if (!this.buffer || this.buffer.byteLength < neededBytes) {
       console.log('alloc', neededBytes * 2)
@@ -47,7 +47,7 @@ export class Stream {
   }
 }
 
-type DataSource = ArrayBufferView | Buffer
+type DataSource = ArrayBuffer | ArrayBufferView | Buffer
 
 function concat(gl: any, byteLength: number, accessor: any, ...srcs: (DataSource | undefined)[]) {
   byteLength = Math.max(byteLength, srcs.reduce((total, s) => total + (s ? s.byteLength : 0), 0))
