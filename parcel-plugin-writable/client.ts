@@ -3,6 +3,23 @@ const clients: { [path: string]: Client } = {}
 import IsObservable from 'symbol-observable'
 import { Observable, Observer } from 'rxjs'
 
+export type Message = Append | Clear
+
+interface Append {
+  type: 'append'
+  data: Uint8Array | ArrayBuffer
+}
+
+interface Clear {
+  type: 'clear'
+}
+
+export const clear: Clear = { type: 'clear' }
+export const append = (data: Uint8Array | ArrayBuffer): Append => ({
+  type: 'append',
+  data
+})
+
 export default class Client {  
   static for(path: string) {
     return clients[path] || (clients[path] = new Client(path))
@@ -20,11 +37,15 @@ export default class Client {
   private ready = false
   private readonly sock: WebSocket
   private data: number[] = []
-  private observers: Observer<any>[] = []
+  private observers: Observer<Message>[] = []
 
-  public [IsObservable]() {
-    return Observable.create((s: Observer<any>) => {
-      if (this.ready) s.next(Uint8Array.from(this.data))      
+  public [IsObservable](): Observable<Message> {
+    return this.updates
+  }
+
+  public get updates(): Observable<Message> {
+    return Observable.create((s: Observer<Message>) => {
+      if (this.ready) s.next(append(Uint8Array.from(this.data)))
       this.observers.push(s)
       return () => {
         const {observers} = this
@@ -34,14 +55,10 @@ export default class Client {
     })
   }
 
-  public get value() {
-    return this[IsObservable]()
-  }
-
   public push(data: Uint8Array) {
     if (!this.ready) return
     this.data.push(...data)    
-    this.emit(data)
+    this.emit(append(data))
     this.sock.send(Uint8Array.from(data))
   }
 
@@ -52,10 +69,13 @@ export default class Client {
   onMessage = (mev: MessageEvent) => {
     this.ready = true
     if (mev.data instanceof ArrayBuffer) {
-      console.log(mev.data)
-      this.emit(mev.data)
+      this.emit(append(mev.data))
       this.data.push(...new Uint8Array(mev.data))
       return
+    }
+    if (typeof mev.data === 'string' && mev.data === 'truncate') {
+      this.emit(clear)
+      this.data = []
     }
   }
 

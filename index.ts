@@ -4,9 +4,6 @@ applyLetterbox()
 
 const stroke = require('var:stroke')
 
-const pt = new Float32Array(2)
-const bytes = new Uint8Array(pt.buffer)
-
 import GL from 'luma.gl/constants'
 import { Matrix4 } from 'math.gl'
 import { AnimationLoop, VertexArray, Buffer, Program, Cube, } from 'luma.gl'
@@ -20,12 +17,19 @@ new AnimationLoop({
       size: 2,
       type: GL.FLOAT,
     })
-    stroke.value.subscribe(data => {
-      positions.push(data)
+    stroke.updates.subscribe(m => {
+      positions.push(m.data)
     })
 
-    canvas.addEventListener('mousemove', ev => {  
-      pt.set([ev.offsetX * devicePixelRatio, ev.offsetY * devicePixelRatio])
+    const pt = new Float32Array(2)
+    const bytes = new Uint8Array(pt.buffer)
+    canvas.addEventListener('mousemove', ev => {
+      const { target, offsetX, offsetY } = ev
+      const w = target.width / devicePixelRatio
+      const h = target.height / devicePixelRatio
+      const x = 32 * (offsetX / w) - 16
+      const y = 18 * (offsetY / h) - 9
+      pt.set([x, y])
       stroke.push(bytes)
     })
     
@@ -48,14 +52,9 @@ new AnimationLoop({
           color = vec4(1.0, 0.0, 1.0, 1.0);
         }
       `,
-      drawMode: GL.POINTS,
     })
 
     canvas.style = ''
-    canvas.style.top = 'var(--letterbox-top);'
-    canvas.style.left = 'var(--letterbox-left);'
-    canvas.style.width = 'var(--letterbox-width);'
-    canvas.style.height = 'var(--letterbox-height);'
     const vertexArray = new VertexArray(gl, { program });
     
     return {
@@ -74,7 +73,13 @@ new AnimationLoop({
     })
    
 
-    const uProjection = new Matrix4().ortho({left: 0, right: canvas.width, top: 0, bottom: canvas.height, near: 0.1, far: -1000 })
+    const uProjection = new Matrix4().ortho({
+      top: -9,
+      bottom: 9,
+      left: -16,
+      right: 16, 
+      near: 0.1, far: -1000
+    })
     ;(window as any).film = uProjection
     program.setUniforms({
       uProjection
@@ -83,7 +88,7 @@ new AnimationLoop({
     program.draw({
       vertexArray,
       vertexCount: positions.count,
-      drawMode: GL.POINTS,      
+      drawMode: GL.LINE_STRIP,
     })
   }
 }).start()

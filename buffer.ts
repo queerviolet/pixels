@@ -5,6 +5,7 @@ declare interface Buffer {
   byteLength: number
   subData: Function
   copyData: Function
+  setByteLength(byteLength: number): void
 }
 
 export class Stream {
@@ -29,6 +30,11 @@ export class Stream {
       this.allocBuffer(neededBytes * 2)
     }
     this.offset = set(this.buffer, data, this.offset)
+  }
+
+  public clear() {
+    this.buffer && this.buffer.setByteLength(0)
+    this.offset = 0
   }
 
   private offset: number = 0
