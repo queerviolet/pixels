@@ -25,6 +25,7 @@ export class Stream {
   public push(data: ArrayBufferView) {
     const neededBytes = data.byteLength + this.offset
     if (!this.buffer || this.buffer.byteLength < neededBytes) {
+      console.log('alloc', neededBytes * 2)
       this.allocBuffer(neededBytes * 2)
     }
     this.offset = set(this.buffer, data, this.offset)
@@ -56,12 +57,13 @@ function concat(gl: any, byteLength: number, accessor: any, ...srcs: (DataSource
 function set(buffer: Buffer, data: DataSource, offset: number) {
   if (!data.byteLength) { return offset }
 
-  if (ArrayBuffer.isView(data)) {
+  if (ArrayBuffer.isView(data) || data instanceof ArrayBuffer) {
     buffer.subData({
       data,
       offset
     })
   } else {
+    console.log('copying from', data, 'to', buffer)
     buffer.copyData({
       sourceBuffer: data,
       readOffset: 0,

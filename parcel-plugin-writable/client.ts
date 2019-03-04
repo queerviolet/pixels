@@ -52,6 +52,7 @@ export default class Client {
   onMessage = (mev: MessageEvent) => {
     this.ready = true
     if (mev.data instanceof ArrayBuffer) {
+      console.log(mev.data)
       this.emit(mev.data)
       this.data.push(...new Uint8Array(mev.data))
       return

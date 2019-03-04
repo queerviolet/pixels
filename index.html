@@ -1,10 +1,12 @@
 <style>
+  body { background: black; }
+
   canvas {
     position: fixed;
-    z-index: -1;
-    width: 100vw;
-    height: 100vh;
-    top: 0; left: 0;
+    width: var(--letterbox-width);
+    height: var(--letterbox-height);
+    top: var(--letterbox-top);
+    left: var(--letterbox-left);
   }
 </style>
 <div id=main></div>

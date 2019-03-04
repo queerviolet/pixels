@@ -1,11 +1,11 @@
+import { applyLetterbox } from './letterbox'
+
+applyLetterbox()
+
 const stroke = require('var:stroke')
 
 const pt = new Float32Array(2)
 const bytes = new Uint8Array(pt.buffer)
-addEventListener('mousemove', ev => {
-  pt.set([ev.clientX, ev.clientY])
-  stroke.push(bytes)
-})
 
 import GL from 'luma.gl/constants'
 import { Matrix4 } from 'math.gl'
@@ -24,6 +24,11 @@ new AnimationLoop({
       positions.push(data)
     })
 
+    canvas.addEventListener('mousemove', ev => {  
+      pt.set([ev.offsetX * devicePixelRatio, ev.offsetY * devicePixelRatio])
+      stroke.push(bytes)
+    })
+    
     const program = new Program(gl, {
       vs: `#version 300 es
         in vec2 pos;
@@ -46,8 +51,11 @@ new AnimationLoop({
       drawMode: GL.POINTS,
     })
 
-    canvas.style.width = '100vw'
-    canvas.style.height = '100vh'
+    canvas.style = ''
+    canvas.style.top = 'var(--letterbox-top);'
+    canvas.style.left = 'var(--letterbox-left);'
+    canvas.style.width = 'var(--letterbox-width);'
+    canvas.style.height = 'var(--letterbox-height);'
     const vertexArray = new VertexArray(gl, { program });
     
     return {
