@@ -15,6 +15,7 @@
   },
   "devDependencies": {
     "@types/text-encoding": "0.0.35",
+    "chokidar": "^2.1.2",
     "luma.gl": "^6.4.3",
     "rxjs": "^6.4.0",
     "symbol-observable": "^1.2.0",

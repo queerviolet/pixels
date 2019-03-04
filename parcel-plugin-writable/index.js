@@ -10,6 +10,8 @@ const readFile = promisify(require('fs').readFile)
 const writeFile = promisify(require('fs').writeFile)
 const { Server } = require('ws')
 const url = require('url')
+const Resolver = module.parent.require('../Resolver')
+const chokidar = require('chokidar')
 const clientPath = require.resolve('./client.ts')
 
 async function createVar(root, path) {
@@ -37,8 +39,7 @@ const extendResolve =
     return out
   }
 
-function File(root, name) {
-  const path = join(root, '.var', name) 
+function File(path) {
   const observers = []
   
   const get = async () => {
@@ -50,11 +51,13 @@ function File(root, name) {
       return Buffer.alloc(0)
     }
   }
-  debug('Opening write for', path)
-  const out = createWriteStream(path, { flags: 'a' })  
+  let out
+  let lastPush = 0
+  didChange()
   return {
     path,
     push,
+    didChange,
     subscribe(s) {
       observers.push(s)
       get().then(data => s.send(data))
@@ -68,15 +71,39 @@ function File(root, name) {
   function push(value, origin) {
     observers.forEach(o => o !== origin && o.send(value))
     out.write(value)
+    lastPush = Date.now()
+  }
+
+  async function didChange() {
+    // Ignore change events if we've recently written the file.
+    if (lastPush > Date.now() - 250) return
+    out && out.close()
+    debug('Opening write for', path)
+    out = createWriteStream(path, { flags: 'a' })
+    if (observers.length) {
+      const data = await get()
+      observers.forEach(o => {
+        o.send('truncate')
+        o.send(data)
+      })
+    }
   }
 }
 
-const Resolver = module.parent.require('../Resolver')
+const varFile = (root, path) => join(root, '.var', path)
 
 module.exports = bundler => {
+  const watcher = chokidar.watch()
   const files = {}
-  const open = path =>
-    files[path] = files[path] || (files[path] = File(bundler.options.rootDir, path))
+  const open = path => {
+    const vPath = varFile(bundler.options.rootDir, path)
+    watcher.add(vPath)
+    return files[vPath] = files[vPath] ||
+      (files[vPath] = File(vPath))
+  }
+  watcher.on('add', f => files[f] && files[f].didChange())
+  watcher.on('change', f => files[f] && files[f].didChange())
+  watcher.on('unlink', f => files[f] && files[f].didChange())
 
   const wss = new Server({ noServer: true })
 
@@ -108,10 +135,5 @@ module.exports = bundler => {
     }
   })
 
-  // const { prototype } = bundler.constructor
-  // prototype.resolveDep = extendResolve(prototype.resolveDep)
-
-  // console.log(bundler)
   Resolver.prototype.resolve = extendResolve(Resolver.prototype.resolve)
-  // bundler.addAssetType('.var', require.resolve('./asset.js'))
 }

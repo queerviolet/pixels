@@ -18,7 +18,7 @@ new AnimationLoop({
       type: GL.FLOAT,
     })
     stroke.updates.subscribe(m => {
-      positions.push(m.data)
+      m.data ? positions.push(m.data) : positions.clear()
     })
 
     const pt = new Float32Array(2)
