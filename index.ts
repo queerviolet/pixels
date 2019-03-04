@@ -49,6 +49,7 @@ new AnimationLoop({
         if (touch.touchType !== 'stylus') continue
         pt.set(frameCoordsFrom(touch))
         stroke.push(bytes)
+        break
       }
     }
     
@@ -97,7 +98,7 @@ new AnimationLoop({
       bottom: 9,
       left: -16,
       right: 16, 
-      near: 0.1, far: -1000
+      near: -1, far: 1000
     })
 
     program.setUniforms({
