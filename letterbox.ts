@@ -77,12 +77,13 @@ const subtract = (container: Size, box: Size & Position): Box[] => {
 }
 
 const px = (px: number) => `${px}px`
-
-export function applyLetterbox(aspect=16 / 9) {
+const None = () => {}
+export function applyLetterbox(aspect=16 / 9, onReshape: (box: Box) => void = None) {
   function onResize() {
     const box =
       letterbox(aspect, {width: innerWidth, height: innerHeight})
     setCSSPropertiesFrom(box)
+    onReshape(box)
   }
   window.addEventListener('resize', onResize)
   onResize()

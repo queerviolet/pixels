@@ -1,6 +1,17 @@
-import { applyLetterbox } from './letterbox'
+import { applyLetterbox, Box } from './letterbox'
 
-applyLetterbox()
+const WIDTH = 16
+const HEIGHT = 9
+let frame: Box | null = null
+applyLetterbox(WIDTH / HEIGHT, box => frame = box)
+
+const frameCoordsFrom = ({
+  clientX, clientY,
+}) =>
+  [
+    2 * WIDTH * (clientX - frame.left) / frame.width - WIDTH,
+    2 * HEIGHT * (clientY - frame.top) / frame.height - HEIGHT,
+  ]
 
 import stroke from 'var:stroke'
 
@@ -10,7 +21,6 @@ import { AnimationLoop, VertexArray, Buffer, Program, Cube, } from 'luma.gl'
 import { Stream } from './buffer';
 
 new AnimationLoop({
-  webgl1: false,
   useDevicePixels: true,
   onInitialize({ gl, canvas }) {
     const positions = new Stream(gl, {
@@ -26,32 +36,39 @@ new AnimationLoop({
     const pt = new Float32Array(2)
     const bytes = new Uint8Array(pt.buffer)
     canvas.addEventListener('mousemove', ev => {
-      const { target, offsetX, offsetY } = ev
-      const w = target.width / devicePixelRatio
-      const h = target.height / devicePixelRatio
-      const x = 32 * (offsetX / w) - 16
-      const y = 18 * (offsetY / h) - 9
-      pt.set([x, y])
+      pt.set(frameCoordsFrom(ev))
       stroke.push(bytes)
     })
+    canvas.addEventListener('touchstart', onTouch)
+    canvas.addEventListener('touchmove', onTouch)
+    canvas.addEventListener('touchend', onTouch)
+    function onTouch(t: TouchEvent) {
+      const { touches } = t
+      let i = touches.length; while (i --> 0) {
+        const touch = touches.item(i)
+        if (touch.touchType !== 'stylus') continue
+        pt.set(frameCoordsFrom(touch))
+        stroke.push(bytes)
+      }
+    }
+    
+    
     
     const program = new Program(gl, {
-      vs: `#version 300 es
-        in vec2 pos;
+      vs: `
+        attribute vec2 pos;
         uniform mat4 uProjection;
 
         void main() {
-          // gl_Position = vec4(pos.x / 600.0, pos.y / 600.0, 1.0, 1.0);
           gl_Position = uProjection * vec4(pos.x, pos.y, 0.0, 1.0);
           gl_PointSize = 16.0;
         }
       `,
-      fs: `#version 300 es
+      fs: `
         precision highp float;
-        out vec4 color;
 
         void main() {
-          color = vec4(1.0, 0.0, 1.0, 1.0);
+          gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0);
         }
       `,
     })
@@ -66,7 +83,7 @@ new AnimationLoop({
     }
   },
 
-  onRender({ gl, program, canvas, vertexArray, positions }) {
+  onRender({ gl, program, vertexArray, positions }) {
     gl.clearColor(0.0, 0.0, 0.0, 1.0)
     gl.clear(GL.COLOR_BUFFER_BIT)
     if (!positions.buffer) return
@@ -82,7 +99,7 @@ new AnimationLoop({
       right: 16, 
       near: 0.1, far: -1000
     })
-    ;(window as any).film = uProjection
+
     program.setUniforms({
       uProjection
     })

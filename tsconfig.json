@@ -4,7 +4,7 @@
     "moduleResolution": "node",
     "baseUrl": ".",
     "paths": {
-      "var:*": ["parcel-plugin-writable/stub"]
+      "var:*": ["parcel-plugin-writable/var"]
     }
   }
 }

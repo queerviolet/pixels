@@ -12,16 +12,12 @@ const { Server } = require('ws')
 const url = require('url')
 const Resolver = module.parent.require('../Resolver')
 const chokidar = require('chokidar')
-const clientPath = require.resolve('./client.ts')
 
-async function createVar(root, path) {
+async function createStub(root, path) {
   const stubFile = resolve(root, '.stub', path + '.ts')
-  const relClientPath = relative(dirname(stubFile), clientPath)
   await mkdir(dirname(stubFile), { recursive: true })
   await writeFile(stubFile, `
-    import Stream from ${JSON.stringify(
-      relClientPath.slice(0, relClientPath.length - '.ts'.length)
-    )}
+    import Stream from 'parcel-plugin-writable/client'
     export default Stream.for(${JSON.stringify(path)})
   `)
 
@@ -36,7 +32,7 @@ const extendResolve =
     input = input.slice('var:'.length)
     const path = relative(root, resolve(parent, '..', input))
 
-    const stubFile = await createVar(root, path)
+    const stubFile = await createStub(root, path)
     const out = await base.call(this, relative(dirname(parent), stubFile), parent)
     return out
   }
