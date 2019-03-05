@@ -18,21 +18,7 @@ import data, { Node, Adapter, Read } from 'var:stroke'
 import GL from 'luma.gl/constants'
 import { Matrix4 } from 'math.gl'
 import { withParameters, AnimationLoop, VertexArray, Buffer, Program, Cube, } from 'luma.gl'
-import { Stream } from './buffer';
-import { Unsubscribable } from 'rxjs';
-
-type StreamNode = { stream: Stream, push: Node, subscription: Unsubscribable }
-
-const sync = (gl: any, accessor: any) =>
-  (push: Node, read: Read): StreamNode => {
-    const stream = new Stream(gl, accessor);
-    const subscription = read(m => {
-      m.type === 'clear'
-        ? stream.clear()
-        : stream.push(m.data)
-    })
-    return { push, stream, subscription }
-  }
+import { sync } from './buffer'
 
 new AnimationLoop({
   useDevicePixels: true,
@@ -47,10 +33,13 @@ new AnimationLoop({
         type: GL.FLOAT
       }),
     })
+    ;(window as any).stroke = stroke
 
     canvas.addEventListener('mousemove', ev => {
-      stroke.pos.push(frameCoordsFrom(ev))
-      stroke.pressure.push(0.5)
+      stroke({
+        pos: frameCoordsFrom(ev),
+        pressure: 0.5
+      })
     })
     canvas.addEventListener('touchstart', onTouch)
     canvas.addEventListener('touchmove', onTouch)
@@ -60,8 +49,10 @@ new AnimationLoop({
       t.preventDefault()
       let i = touches.length; while (i --> 0) {
         const touch = touches.item(i)
-        stroke.pos.push(frameCoordsFrom(touch))
-        stroke.pressure.push(touch.force)
+        stroke({
+          pos: frameCoordsFrom(touch),
+          pressure: touch.force,
+        })
       }
     }
     

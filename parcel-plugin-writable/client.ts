@@ -23,14 +23,29 @@ function setFloats(array: number[]) {
   return new Uint8Array(float.buffer, 0, array.length * Float32Array.BYTES_PER_ELEMENT)
 }
 
-const createNode = (path: string): Node => {  
+let zeroes = new Uint8Array([0])
+function setZeroes(byteLength: number) {
+  if (zeroes.length < byteLength)
+    zeroes = new Uint8Array(byteLength)
+  return new Uint8Array(zeroes.buffer, 0, byteLength)
+}
+
+export interface NodeOptions {
+  elementSize?: number
+}
+
+import { Schema } from './var.d'
+
+const createNode = (path: string, { elementSize=1 }: NodeOptions = { elementSize: 1 }): Node => {  
   function read(reader: (msg: Message) => void): Unsubscribable {
     return Client.for(path).updates.subscribe(reader)
   }
   function self(input: any) {
-    if (!input) return self
+    if (input == null) {
+      return self(setZeroes(elementSize))
+    }    
     if (typeof input === 'string')
-      return createNode(join(path, input))
+      throw new Error('String input unsupported')
     if (typeof input === 'function')
       return input(self, read)
     if (input instanceof Uint8Array) {
@@ -41,7 +56,7 @@ const createNode = (path: string): Node => {
       path && Client.for(path).push(setFloats([input]))
       return self
     }
-    if (Array.isArray(input)) {      
+    if (Array.isArray(input)) { 
       path && Client.for(path).push(setFloats(input))
       return self
     }
@@ -53,13 +68,32 @@ const createNode = (path: string): Node => {
       : null
     if (buf)
       path && Client.for(path).push(new Uint8Array(buf))
-    const base = {}
-    for (const key of Object.keys(input)) {
-      base[key] = self(key)(input[key])
-    }
-    return base
+    return structWriter(self, input)
   }
+
+  self.child = (input: string) => createNode(join(path, input))
+  self.withElementSize = (elementSize: number) => createNode(path, { elementSize })
+
   return self
+}
+
+function structWriter(node: Node, schema: Schema) {
+  const writers = {}
+  let src = 'return input => {'
+  Object.keys(schema).forEach((key, i) => {
+    const writer = node.child(key)(schema[key])
+    writers[key] = writer
+    if (typeof writer === 'function')
+      src += `${key}(input.${key});`
+    else if (typeof writer['push'] === 'function')
+      src += `${key}.push(input.${key});`
+  })
+  src += '}'  
+  console.log(src)
+  const write = new Function(...Object.keys(writers), src)(...Object.values(writers))
+  console.log(writers)
+  Object.keys(schema).forEach(key => write[key] = writers[key])
+  return write
 }
 
 export default createNode

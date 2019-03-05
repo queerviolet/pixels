@@ -20,17 +20,32 @@ export type Shape<S> =
     ? R
     :
   S extends Schema
-    ? { [key in keyof S]: Shape<S[key]> }
+    ? ((write: Input<S>) => void) & {
+      [key in keyof S]: Shape<S[key]>
+    }
     :
     void
 
-export type Data = ArrayBuffer | ArrayBufferView | number
+export type Input<S> =
+  S extends (node: Node, read: Read) => any
+    ? Data
+    :
+  S extends Schema
+    ? {
+      [key in keyof S]: Input<S[key]>
+    }
+    :
+    void
+
+
+export type Data = ArrayBuffer | ArrayBufferView | number | number[]
 export type Read = (reader: (msg: Message) => void) => Unsubscribable
 
 export type Adapter<T> = (node: Node, read: Read) => T
 export interface Node {
-  (child: string): Node
   (push: Data): Node
+  child(path: string): Node
+  withElementSize(byteLength: number): Node
   <T>(adapter: Adapter<T>): T
   <S extends Schema>(schema: S): Shape<S>
 }

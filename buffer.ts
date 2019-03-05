@@ -1,5 +1,6 @@
 import GL from 'luma.gl/constants'
 import { Buffer, _Accessor as Accessor } from 'luma.gl'
+import { Unsubscribable } from 'rxjs';
 
 declare interface Buffer {
   byteLength: number
@@ -7,6 +8,25 @@ declare interface Buffer {
   copyData: Function
   setByteLength(byteLength: number): void
 }
+
+import { Node, Read } from 'parcel-plugin-writable/var.d'
+
+type StreamNode = { stream: Stream, push: Node, subscription: Unsubscribable }
+
+export const sync = (gl: any, accessor: any) =>
+  (push: Node, read: Read): StreamNode => {
+    const stream = new Stream(gl, accessor);
+    const subscription = read(m => {
+      m.type === 'clear'
+        ? stream.clear()
+        : stream.push(m.data)
+    })
+    return {
+      push: push.withElementSize(stream.elementSize),
+      stream,
+      subscription
+    }
+  }
 
 export class Stream {
   constructor(private gl: any, private accessor: any, count?: number) {
