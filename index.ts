@@ -18,7 +18,7 @@ import pressure from 'var:pressure'
 
 import GL from 'luma.gl/constants'
 import { Matrix4 } from 'math.gl'
-import { AnimationLoop, VertexArray, Buffer, Program, Cube, } from 'luma.gl'
+import { withParameters, AnimationLoop, VertexArray, Buffer, Program, Cube, } from 'luma.gl'
 import { Stream } from './buffer';
 
 new AnimationLoop({
@@ -48,6 +48,8 @@ new AnimationLoop({
     canvas.addEventListener('mousemove', ev => {
       pt.set(frameCoordsFrom(ev))
       pos.push(bytes)
+      presh.set([1])
+      pressure.push(preshBytes)
     })
     const presh = new Float32Array(1)
     const preshBytes = new Uint8Array(presh.buffer)    
@@ -56,14 +58,13 @@ new AnimationLoop({
     canvas.addEventListener('touchend', onTouch)
     function onTouch(t: TouchEvent) {
       const { touches } = t
+      t.preventDefault()
       let i = touches.length; while (i --> 0) {
         const touch = touches.item(i)
-        if (touch.touchType !== 'stylus') continue
         pt.set(frameCoordsFrom(touch))
         pos.push(bytes)
-        // presh.set([touch.force])
-        // pressures.push(preshBytes)
-        break
+        presh.set([touch.force])
+        pressure.push(preshBytes)
       }
     }
     
@@ -72,18 +73,22 @@ new AnimationLoop({
     const program = new Program(gl, {
       vs: `
         attribute vec2 pos;
+        attribute float pressure;
         uniform mat4 uProjection;
+        varying float vPressure;
 
         void main() {
           gl_Position = uProjection * vec4(pos.x, pos.y, 0.0, 1.0);
-          gl_PointSize = 16.0;
+          gl_PointSize = 5.0 * pressure * 7.0;
+          vPressure = pressure;
         }
       `,
       fs: `
         precision highp float;
+        varying float vPressure;
 
         void main() {
-          gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0);
+          gl_FragColor = vec4(1.0, 0.0, 1.0, vPressure);
         }
       `,
     })
@@ -94,16 +99,18 @@ new AnimationLoop({
     return {
       program,  
       positions,
-      vertexArray,
+      pressures,
+      vertexArray,      
     }
   },
 
-  onRender({ gl, program, vertexArray, positions }) {
+  onRender({ gl, program, vertexArray, positions, pressures }) {
     gl.clearColor(0.0, 0.0, 0.0, 1.0)
     gl.clear(GL.COLOR_BUFFER_BIT)
     if (!positions.buffer) return
     vertexArray.setAttributes({
       pos: positions.buffer,
+      pressure: pressures.buffer,
     })
    
 
@@ -119,10 +126,18 @@ new AnimationLoop({
       uProjection
     })
 
-    program.draw({
+    withParameters(gl, {
+      [GL.BLEND]: true,
+      // blendColor: [GL.BLEND_COLOR],
+      // blendEquation: [GL.FUNC_ADDGL.BLEND_EQUATION_RGB, GL.BLEND_EQUATION_ALPHA],
+      // blendFunc: [GL.BLEND_SRC_RGB, GL.BLEND_SRC_ALPHA],
+
+      blendFunc: [GL.ONE_MINUS_SRC_ALPHA, GL.ZERO, GL.CONSTANT_ALPHA, GL.ZERO],
+      blendEquation: GL.FUNC_ADD
+    }, () => program.draw({
       vertexArray,
       vertexCount: positions.count,
-      drawMode: GL.POINTS,
-    })
+      drawMode: GL.POINTS,     
+    }))
   }
 }).start()

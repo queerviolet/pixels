@@ -22,15 +22,21 @@ export const append = (data: Uint8Array | ArrayBuffer): Append => ({
 
 export default class Client {  
   static for(path: string) {
-    return clients[path] || (clients[path] = new Client(path))
+    if (clients[path]) {
+      console.log('returning cached client for', path)
+      return clients[path]
+    }
+    console.log('creating new client for', path)
+    return clients[path] = new Client(path)
   }
 
-  constructor(public readonly path: string) {
+  constructor(public readonly path: string) {    
     const sock = new WebSocket(`ws://${location.host}/__write__/${path}`)
     sock.binaryType = 'arraybuffer'
     sock.onmessage = this.onMessage
     sock.onerror = this.onError
     sock.onclose = this.onClose
+    sock.onopen = console.log
     this.sock = sock
   }
 
@@ -56,11 +62,14 @@ export default class Client {
   }
 
   public push(data: Uint8Array) {
-    if (!this.ready) return
+    console.log('push', this.path, data)
+    if (!this.ready) {
+      console.error('not ready', this.path)
+      return
+    }
     this.data.push(...data)    
     this.emit(append(data))
     this.sock.send(Uint8Array.from(data))
-    console.log('push', this.path, data)
   }
 
   private emit(data: any) {
@@ -69,6 +78,7 @@ export default class Client {
 
   onMessage = (mev: MessageEvent) => {
     this.ready = true
+    console.log(this.path, this.ready, mev.data instanceof ArrayBuffer)
     if (mev.data instanceof ArrayBuffer) {
       this.emit(append(mev.data))
       this.data.push(...new Uint8Array(mev.data))

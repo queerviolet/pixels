@@ -68,7 +68,7 @@ function File(path) {
 
   function push(value, origin) {
     observers.forEach(o => o !== origin && o.send(value))
-    console.log('write', path, value)
+    // console.log('write', path, value)
     out.write(value)
     lastActivity = Date.now()
   }
