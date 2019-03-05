@@ -132,8 +132,8 @@ new AnimationLoop({
       // blendEquation: [GL.FUNC_ADDGL.BLEND_EQUATION_RGB, GL.BLEND_EQUATION_ALPHA],
       // blendFunc: [GL.BLEND_SRC_RGB, GL.BLEND_SRC_ALPHA],
 
-      blendFunc: [GL.ONE_MINUS_SRC_ALPHA, GL.ZERO, GL.CONSTANT_ALPHA, GL.ZERO],
-      blendEquation: GL.FUNC_ADD
+      blendFuncPart: [GL.ONE_MINUS_SRC_ALPHA, GL.ZERO, GL.CONSTANT_ALPHA, GL.ZERO],
+      // blendEquation: GL.FUNC_ADD
     }, () => program.draw({
       vertexArray,
       vertexCount: positions.count,
