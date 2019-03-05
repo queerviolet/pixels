@@ -13,7 +13,8 @@ const frameCoordsFrom = ({
     2 * HEIGHT * (clientY - frame.top) / frame.height - HEIGHT,
   ]
 
-import stroke from 'var:stroke'
+import pos from 'var:pos'
+import pressure from 'var:pressure'
 
 import GL from 'luma.gl/constants'
 import { Matrix4 } from 'math.gl'
@@ -26,19 +27,30 @@ new AnimationLoop({
     const positions = new Stream(gl, {
       size: 2,
       type: GL.FLOAT,
-    })
-    stroke.updates.subscribe(m => {
+    }, 2048)
+    const pressures = new Stream(gl, {
+      size: 1,
+      type: GL.FLOAT
+    }, 2048)
+    pos.updates.subscribe(m => {
       m.type === 'clear'
         ? positions.clear()
         : positions.push(m.data)
+    })
+    pressure.updates.subscribe(m => {
+      m.type === 'clear'
+        ? pressures.clear()
+        : pressures.push(m.data)
     })
 
     const pt = new Float32Array(2)
     const bytes = new Uint8Array(pt.buffer)
     canvas.addEventListener('mousemove', ev => {
       pt.set(frameCoordsFrom(ev))
-      stroke.push(bytes)
+      pos.push(bytes)
     })
+    const presh = new Float32Array(1)
+    const preshBytes = new Uint8Array(presh.buffer)    
     canvas.addEventListener('touchstart', onTouch)
     canvas.addEventListener('touchmove', onTouch)
     canvas.addEventListener('touchend', onTouch)
@@ -48,7 +60,9 @@ new AnimationLoop({
         const touch = touches.item(i)
         if (touch.touchType !== 'stylus') continue
         pt.set(frameCoordsFrom(touch))
-        stroke.push(bytes)
+        pos.push(bytes)
+        // presh.set([touch.force])
+        // pressures.push(preshBytes)
         break
       }
     }
@@ -108,7 +122,7 @@ new AnimationLoop({
     program.draw({
       vertexArray,
       vertexCount: positions.count,
-      drawMode: GL.LINE_STRIP,
+      drawMode: GL.POINTS,
     })
   }
 }).start()

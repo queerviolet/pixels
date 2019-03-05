@@ -60,6 +60,7 @@ export default class Client {
     this.data.push(...data)    
     this.emit(append(data))
     this.sock.send(Uint8Array.from(data))
+    console.log('push', this.path, data)
   }
 
   private emit(data: any) {

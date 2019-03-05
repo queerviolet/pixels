@@ -14,6 +14,7 @@ export class Stream {
   }
 
   public buffer: Buffer
+  public array: Uint8Array
 
   get elementSize(): number {
     return Accessor.getBytesPerVertex(this.accessor)
@@ -34,21 +35,35 @@ export class Stream {
 
   public clear() {
     this.buffer && this.buffer.setByteLength(0)
+    this.array && (this.array = new Uint8Array(0))
     this.offset = 0
   }
 
   private offset: number = 0
 
   private allocBuffer(byteLength: number) {
-    const { buffer, offset } = concat(this.gl, byteLength, this.accessor, this.buffer)
+    const array = concatArrays(byteLength, this.array)
+    const { buffer, offset } = concat(this.gl, byteLength, this.accessor, this.array)
 
     this.buffer = buffer
+    this.array = array
     this.offset = offset
   }
 }
 
-type DataSource = ArrayBuffer | ArrayBufferView | Buffer
+function concatArrays(byteLength: number, ...srcs: Uint8Array[]) {
+  byteLength = Math.max(byteLength, srcs.reduce((total, s) => total + (s ? s.byteLength : 0), 0))
+  const array = new Uint8Array(byteLength)  
+  let offset = 0
+  srcs.forEach(s => {
+    if (!s) return
+    array.set(s, offset)    
+    offset += s.byteLength
+  })
+  return array
+}
 
+type DataSource = ArrayBuffer | ArrayBufferView | Buffer
 function concat(gl: any, byteLength: number, accessor: any, ...srcs: (DataSource | undefined)[]) {
   byteLength = Math.max(byteLength, srcs.reduce((total, s) => total + (s ? s.byteLength : 0), 0))
   const buffer = new Buffer(gl, { byteLength, accessor })
@@ -70,12 +85,13 @@ function set(buffer: Buffer, data: DataSource, offset: number) {
     })
   } else {
     console.log('copying from', data, 'to', buffer)
-    buffer.copyData({
-      sourceBuffer: data,
-      readOffset: 0,
-      writeOffset: offset,
-      size: data.byteLength
-    })
+    // buffer.copyData({
+    //   sourceBuffer: data,
+    //   readOffset: 0,
+    //   writeOffset: offset,
+    //   size: data.byteLength
+    // })
+    console.error('WebGL1 Unsupported code path')
   }
   return offset + data.byteLength
 }
