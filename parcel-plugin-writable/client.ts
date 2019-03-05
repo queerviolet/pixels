@@ -1,18 +1,10 @@
 const clients: { [path: string]: Client } = {}
 
 import IsObservable from 'symbol-observable'
-import { Observable, Observer } from 'rxjs'
+import { Observable, Observer, Unsubscribable } from 'rxjs'
 
-export type Message = Append | Clear
-
-interface Append {
-  type: 'append'
-  data: Uint8Array | ArrayBuffer
-}
-
-interface Clear {
-  type: 'clear'
-}
+import * as varModule from './var.d'
+import { Node, Clear, Append, Message } from './var.d'
 
 export const clear: Clear = { type: 'clear' }
 export const append = (data: Uint8Array | ArrayBuffer): Append => ({
@@ -20,29 +12,39 @@ export const append = (data: Uint8Array | ArrayBuffer): Append => ({
   data
 })
 
-type Schema = {
-  [key: string]: any
-}
-
 import { join } from 'path'
 
-const float = new Float32Array([0])
-const floatBytes = new Uint8Array(float.buffer)
+let float = new Float32Array([0])
+function setFloats(array: number[]) {
+  if (float.length < array.length) {
+    float = new Float32Array(array.length)    
+  }
+  float.set(array)
+  return new Uint8Array(float.buffer, 0, array.length * Float32Array.BYTES_PER_ELEMENT)
+}
 
-const Node = (path: string) => {
-  const self = (input: any) => {
+const createNode = (path: string): Node => {  
+  function read(reader: (msg: Message) => void): Unsubscribable {
+    return Client.for(path).updates.subscribe(reader)
+  }
+  function self(input: any) {
+    if (!input) return self
     if (typeof input === 'string')
-      return Node(join(path, input))
-    if (!input) return Client.for(path)
+      return createNode(join(path, input))
     if (typeof input === 'function')
-      return Client.for(path).updates.subscribe(input)
-    if (input instanceof Uint8Array)
-      return Client.for(path).push(input)
-    if (typeof input === 'number') {
-      float.set([input])
-      return Client.for(path).push(floatBytes)
+      return input(self, read)
+    if (input instanceof Uint8Array) {
+      path && Client.for(path).push(input)
+      return self
     }
-
+    if (typeof input === 'number') {
+      path && Client.for(path).push(setFloats([input]))
+      return self
+    }
+    if (Array.isArray(input)) {      
+      path && Client.for(path).push(setFloats(input))
+      return self
+    }
     const buf = ArrayBuffer.isView(input)
       ? input.buffer
       :
@@ -50,17 +52,17 @@ const Node = (path: string) => {
       ? input
       : null
     if (buf)
-      Client.for(path).push(new Uint8Array(buf))
-    const schema: any = {}
+      path && Client.for(path).push(new Uint8Array(buf))
+    const base = {}
     for (const key of Object.keys(input)) {
-      schema[key] = self(key)
+      base[key] = self(key)(input[key])
     }
-    return schema
+    return base
   }
   return self
 }
 
-export default Node
+export default createNode
 
 class Client {  
   static for(path: string) {

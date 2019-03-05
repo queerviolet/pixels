@@ -13,51 +13,45 @@ const frameCoordsFrom = ({
     2 * HEIGHT * (clientY - frame.top) / frame.height - HEIGHT,
   ]
 
-import pos from 'var:pos'
-import pressure from 'var:pressure'
-import varStroke from 'var:stroke'
-const stroke = varStroke({
-  pos: true,
-  pressure: true
-})
-console.log(stroke)
+import data, { Node, Adapter, Read } from 'var:stroke'
 
 import GL from 'luma.gl/constants'
 import { Matrix4 } from 'math.gl'
 import { withParameters, AnimationLoop, VertexArray, Buffer, Program, Cube, } from 'luma.gl'
 import { Stream } from './buffer';
+import { Unsubscribable } from 'rxjs';
+
+type StreamNode = { stream: Stream, push: Node, subscription: Unsubscribable }
+
+const sync = (gl: any, accessor: any) =>
+  (push: Node, read: Read): StreamNode => {
+    const stream = new Stream(gl, accessor);
+    const subscription = read(m => {
+      m.type === 'clear'
+        ? stream.clear()
+        : stream.push(m.data)
+    })
+    return { push, stream, subscription }
+  }
 
 new AnimationLoop({
   useDevicePixels: true,
   onInitialize({ gl, canvas }) {
-    const positions = new Stream(gl, {
-      size: 2,
-      type: GL.FLOAT,
-    }, 2048)
-    const pressures = new Stream(gl, {
-      size: 1,
-      type: GL.FLOAT
-    }, 2048)
-    stroke.pos(m => {
-      m.type === 'clear'
-        ? positions.clear()
-        : positions.push(m.data)
-    })
-    stroke.pressure(m => {
-      m.type === 'clear'
-        ? pressures.clear()
-        : pressures.push(m.data)
+    const stroke = data({
+      pos: sync(gl, {
+        size: 2,
+        type: GL.FLOAT,
+      }),
+      pressure: sync(gl, {
+        size: 1,
+        type: GL.FLOAT
+      }),
     })
 
-    const pt = new Float32Array(2)
-    const bytes = new Uint8Array(pt.buffer)
     canvas.addEventListener('mousemove', ev => {
-      pt.set(frameCoordsFrom(ev))
-      stroke.pos(pt)
-      stroke.pressure(1)
+      stroke.pos.push(frameCoordsFrom(ev))
+      stroke.pressure.push(0.5)
     })
-    const presh = new Float32Array(1)
-    const preshBytes = new Uint8Array(presh.buffer)    
     canvas.addEventListener('touchstart', onTouch)
     canvas.addEventListener('touchmove', onTouch)
     canvas.addEventListener('touchend', onTouch)
@@ -66,9 +60,8 @@ new AnimationLoop({
       t.preventDefault()
       let i = touches.length; while (i --> 0) {
         const touch = touches.item(i)
-        pt.set(frameCoordsFrom(touch))
-        stroke.pos(pt)
-        stroke.pressure(touch.force)
+        stroke.pos.push(frameCoordsFrom(touch))
+        stroke.pressure.push(touch.force)
       }
     }
     
@@ -102,21 +95,19 @@ new AnimationLoop({
     
     return {
       program,  
-      positions,
-      pressures,
+      stroke,
       vertexArray,      
     }
   },
 
-  onRender({ gl, program, vertexArray, positions, pressures }) {
+  onRender({ gl, program, vertexArray, stroke }) {
     gl.clearColor(0.0, 0.0, 0.0, 1.0)
     gl.clear(GL.COLOR_BUFFER_BIT)
-    if (!positions.buffer) return
+    if (!stroke.pos.stream.buffer) return
     vertexArray.setAttributes({
-      pos: positions.buffer,
-      pressure: pressures.buffer,
+      pos: stroke.pos.stream.buffer,
+      pressure: stroke.pressure.stream.buffer,
     })
-   
 
     const uProjection = new Matrix4().ortho({
       top: -9,
@@ -140,7 +131,7 @@ new AnimationLoop({
       // blendEquation: GL.FUNC_ADD
     }, () => program.draw({
       vertexArray,
-      vertexCount: positions.count,
+      vertexCount: stroke.pos.stream.count,
       drawMode: GL.POINTS,     
     }))
   }

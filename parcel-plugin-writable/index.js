@@ -17,10 +17,8 @@ async function createStub(root, path) {
   const stubFile = resolve(root, '.stub', path + '.ts')
   await mkdir(dirname(stubFile), { recursive: true })
   await writeFile(stubFile, `
-    import Node from 'parcel-plugin-writable/client'
-    export default Node(${JSON.stringify(path)})
-  `)
-
+import Node from 'parcel-plugin-writable/client'
+export const path = Node(${JSON.stringify(path)})`)
   return stubFile
 }
 

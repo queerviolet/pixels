@@ -2,6 +2,7 @@
   "compilerOptions": {
     "target": "esnext",
     "moduleResolution": "node",
+    "module": "esnext",
     "baseUrl": ".",
     "paths": {
       "var:*": ["parcel-plugin-writable/var"]
