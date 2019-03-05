@@ -13,7 +13,7 @@ const frameCoordsFrom = ({
     2 * HEIGHT * (clientY - frame.top) / frame.height - HEIGHT,
   ]
 
-import data, { Node, Adapter, Read } from 'var:stroke'
+import data from 'var:stroke'
 
 import GL from 'luma.gl/constants'
 import { Matrix4 } from 'math.gl'
@@ -54,9 +54,7 @@ new AnimationLoop({
           pressure: touch.force,
         })
       }
-    }
-    
-    
+    }        
     
     const program = new Program(gl, {
       vs: `
