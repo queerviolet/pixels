@@ -20,13 +20,54 @@ export const append = (data: Uint8Array | ArrayBuffer): Append => ({
   data
 })
 
-export default class Client {  
+type Schema = {
+  [key: string]: any
+}
+
+import { join } from 'path'
+
+const float = new Float32Array([0])
+const floatBytes = new Uint8Array(float.buffer)
+
+const Node = (path: string) => {
+  const self = (input: any) => {
+    if (typeof input === 'string')
+      return Node(join(path, input))
+    if (!input) return Client.for(path)
+    if (typeof input === 'function')
+      return Client.for(path).updates.subscribe(input)
+    if (input instanceof Uint8Array)
+      return Client.for(path).push(input)
+    if (typeof input === 'number') {
+      float.set([input])
+      return Client.for(path).push(floatBytes)
+    }
+
+    const buf = ArrayBuffer.isView(input)
+      ? input.buffer
+      :
+      input instanceof ArrayBuffer
+      ? input
+      : null
+    if (buf)
+      Client.for(path).push(new Uint8Array(buf))
+    const schema: any = {}
+    for (const key of Object.keys(input)) {
+      schema[key] = self(key)
+    }
+    return schema
+  }
+  return self
+}
+
+export default Node
+
+class Client {  
   static for(path: string) {
     if (clients[path]) {
-      console.log('returning cached client for', path)
       return clients[path]
     }
-    console.log('creating new client for', path)
+    console.log('Create client', path)
     return clients[path] = new Client(path)
   }
 
@@ -62,7 +103,6 @@ export default class Client {
   }
 
   public push(data: Uint8Array) {
-    console.log('push', this.path, data)
     if (!this.ready) {
       console.error('not ready', this.path)
       return
@@ -70,6 +110,7 @@ export default class Client {
     this.data.push(...data)    
     this.emit(append(data))
     this.sock.send(Uint8Array.from(data))
+    return this
   }
 
   private emit(data: any) {
@@ -78,7 +119,6 @@ export default class Client {
 
   onMessage = (mev: MessageEvent) => {
     this.ready = true
-    console.log(this.path, this.ready, mev.data instanceof ArrayBuffer)
     if (mev.data instanceof ArrayBuffer) {
       this.emit(append(mev.data))
       this.data.push(...new Uint8Array(mev.data))

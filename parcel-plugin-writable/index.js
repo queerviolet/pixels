@@ -17,8 +17,8 @@ async function createStub(root, path) {
   const stubFile = resolve(root, '.stub', path + '.ts')
   await mkdir(dirname(stubFile), { recursive: true })
   await writeFile(stubFile, `
-    import Stream from 'parcel-plugin-writable/client'
-    export default Stream.for(${JSON.stringify(path)})
+    import Node from 'parcel-plugin-writable/client'
+    export default Node(${JSON.stringify(path)})
   `)
 
   return stubFile
@@ -40,15 +40,20 @@ const extendResolve =
 function File(path) {
   const observers = []
   
+  const create = async () => {
+    await mkdir(dirname(path), { recursive: true })
+    await touch(path)
+  }
+
   const get = async () => {
     try {
-      await mkdir(dirname(path), { recursive: true })
-      await touch(path)
+      await create()
       return readFile(path)
     } catch {
       return Buffer.alloc(0)
     }
   }
+
   let out
   let lastActivity = 0
   didChange()
@@ -81,9 +86,12 @@ function File(path) {
       debug('Will reopen', path)
       out.close()
     }
-    debug('Opening write for', path)
+    debug('Touch:', path)
+    await create()
+    debug('Open append stream:', path)
     out = createWriteStream(path, { flags: 'a' })
     if (observers.length) {
+      debug('Read:', path)
       const data = await get()
       observers.forEach(o => {
         o.send('truncate')

@@ -15,6 +15,12 @@ const frameCoordsFrom = ({
 
 import pos from 'var:pos'
 import pressure from 'var:pressure'
+import varStroke from 'var:stroke'
+const stroke = varStroke({
+  pos: true,
+  pressure: true
+})
+console.log(stroke)
 
 import GL from 'luma.gl/constants'
 import { Matrix4 } from 'math.gl'
@@ -32,12 +38,12 @@ new AnimationLoop({
       size: 1,
       type: GL.FLOAT
     }, 2048)
-    pos.updates.subscribe(m => {
+    stroke.pos(m => {
       m.type === 'clear'
         ? positions.clear()
         : positions.push(m.data)
     })
-    pressure.updates.subscribe(m => {
+    stroke.pressure(m => {
       m.type === 'clear'
         ? pressures.clear()
         : pressures.push(m.data)
@@ -47,9 +53,8 @@ new AnimationLoop({
     const bytes = new Uint8Array(pt.buffer)
     canvas.addEventListener('mousemove', ev => {
       pt.set(frameCoordsFrom(ev))
-      pos.push(bytes)
-      presh.set([1])
-      pressure.push(preshBytes)
+      stroke.pos(pt)
+      stroke.pressure(1)
     })
     const presh = new Float32Array(1)
     const preshBytes = new Uint8Array(presh.buffer)    
@@ -62,9 +67,8 @@ new AnimationLoop({
       let i = touches.length; while (i --> 0) {
         const touch = touches.item(i)
         pt.set(frameCoordsFrom(touch))
-        pos.push(bytes)
-        presh.set([touch.force])
-        pressure.push(preshBytes)
+        stroke.pos(pt)
+        stroke.pressure(touch.force)
       }
     }
     
