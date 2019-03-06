@@ -3,6 +3,7 @@
     "target": "esnext",
     "moduleResolution": "node",
     "module": "esnext",
+    "jsx": "react",
     "baseUrl": ".",
     "paths": {
       "var:*": ["parcel-plugin-writable/var"]

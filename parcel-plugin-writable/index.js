@@ -17,8 +17,8 @@ async function createStub(root, path) {
   const stubFile = resolve(root, '.stub', path + '.ts')
   await mkdir(dirname(stubFile), { recursive: true })
   await writeFile(stubFile, `
-import Node from 'parcel-plugin-writable/client'
-export const path = Node(${JSON.stringify(path)})`)
+import { createNode } from 'parcel-plugin-writable/client'
+export const path = createNode(${JSON.stringify(path)})`)
   return stubFile
 }
 
@@ -31,6 +31,7 @@ const extendResolve =
     const path = relative(root, resolve(parent, '..', input))
 
     const stubFile = await createStub(root, path)
+    console.log('Created', stubFile)
     const out = await base.call(this, relative(dirname(parent), stubFile), parent)
     return out
   }

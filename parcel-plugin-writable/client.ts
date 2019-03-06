@@ -36,7 +36,7 @@ export interface NodeOptions {
 
 import { Schema } from './var.d'
 
-const createNode = (path: string, { elementSize=1 }: NodeOptions = { elementSize: 1 }): Node => {  
+export const createNode = (path: string, { elementSize=1 }: NodeOptions = { elementSize: 1 }): Node => {  
   function read(reader: (msg: Message) => void): Unsubscribable {
     return Client.for(path).updates.subscribe(reader)
   }
@@ -84,14 +84,12 @@ function structWriter(node: Node, schema: Schema) {
     const writer = node.child(key)(schema[key])
     writers[key] = writer
     if (typeof writer === 'function')
-      src += `${key}(input.${key});`
+      src += `${key} && ${key}(input && input.${key});`
     else if (typeof writer['push'] === 'function')
-      src += `${key}.push(input.${key});`
+      src += `${key} && ${key}.push(input && input.${key});`
   })
-  src += '}'  
-  console.log(src)
+  src += '}'
   const write = new Function(...Object.keys(writers), src)(...Object.values(writers))
-  console.log(writers)
   Object.keys(schema).forEach(key => write[key] = writers[key])
   return write
 }

@@ -13,28 +13,69 @@ const frameCoordsFrom = ({
     2 * HEIGHT * (clientY - frame.top) / frame.height - HEIGHT,
   ]
 
-import data from 'var:stroke'
+import Data from 'parcel-plugin-writable/Client'
 
 import GL from 'luma.gl/constants'
 import { Matrix4 } from 'math.gl'
 import { withParameters, AnimationLoop, VertexArray, Buffer, Program, Cube, } from 'luma.gl'
 import { sync } from './buffer'
 
-new AnimationLoop({
-  useDevicePixels: true,
-  onInitialize({ gl, canvas }) {
-    const stroke = data({
-      pos: sync(gl, {
+import { render } from 'react-dom'
+import * as React from 'react'
+import Loop, { Print, Value, Cell, useRead } from './loop'
+import { ReactElement, useRef, useEffect, useContext } from 'react';
+import { Schema } from 'var:*';
+
+const GLContext = React.createContext(null)
+
+function Run({ input }) {
+  const ver = useRef(0)
+  ;(global as any).ran = useRead(input)
+  return <h1>{++ver.current}</h1>
+}
+
+function DataBuffer({ _, schema, path }: WithPath & WithCell & WithSchema) {
+  const gl = useContext(GLContext)
+  console.log('******gl=', gl)  
+  useEffect(() => {
+    if (!gl) return
+    const keys = Object.keys(schema)
+    const out = {}
+    let i = keys.length; while (i --> 0) {
+      const k = keys[i]
+      out[k] = sync(gl, schema[k])
+    }
+    _.write(Data(path)(out))
+    return
+  }, [gl, schema])
+  return null
+}
+
+
+function ReadStroke({
+  _,
+  path,
+  data = <DataBuffer
+    path={path}
+    schema={{
+      pos: {
         size: 2,
         type: GL.FLOAT,
-      }),
-      pressure: sync(gl, {
+      },
+      pressure: {
         size: 1,
         type: GL.FLOAT
-      }),
-    })
-    ;(window as any).stroke = stroke
-
+      }
+    }} />
+}: WithData & WithPath & WithCell) {
+  const gl = useContext(GLContext)
+  const ref = useRef<HTMLDivElement>()
+  const stroke = useRead(data)
+  console.log('stroke=', stroke)
+  stroke && _.write(stroke)
+  useEffect(() => {
+    if (!ref.current || !gl || !stroke) return
+    const canvas = ref.current!
     canvas.addEventListener('mousemove', ev => {
       stroke({
         pos: frameCoordsFrom(ev),
@@ -54,8 +95,48 @@ new AnimationLoop({
           pressure: touch.force,
         })
       }
-    }        
-    
+    }
+    return () => {
+      console.log('TODO: Detach listeners')
+    }    
+  }, [ref.current, stroke, gl])
+  return <div ref={ref} style={{width: '100%', height: '100%'}} />
+}
+type WithCell = { _?: Cell }
+type WithPath = { path?: string }
+type WithSchema = { schema: Schema }
+type WithData = { data?: ReactElement }
+
+// type Accessor = { size: number, type: any }
+// type MutableBufferProps = Accessor & Receiver
+// const MutableBuffer = ({ size, type, _ }: MutableBufferProps) => {}
+
+new AnimationLoop({
+  useDevicePixels: true,
+  onInitialize({ gl, canvas }) {
+    render(
+      <GLContext.Provider value={gl}>
+        <Loop>
+          <Print input={<Value value='hi there' />} />
+          <Print input={<Value value='hi there' />} />
+          <Print input={<Value value='should be only one hello' />} />
+          <Run input={<ReadStroke path="another-stroke" />} />
+        </Loop>
+      </GLContext.Provider>,
+      document.getElementById('main'))
+
+    const stroke = Data('stroke')({
+      pos: sync(gl, {
+        size: 2,
+        type: GL.FLOAT,
+      }),
+      pressure: sync(gl, {
+        size: 1,
+        type: GL.FLOAT
+      }),
+    })
+    ;(window as any).stroke = stroke
+
     const program = new Program(gl, {
       vs: `
         attribute vec2 pos;
