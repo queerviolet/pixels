@@ -2,11 +2,15 @@ import * as React from 'react'
 const { useState, useRef, useEffect, useContext, useMemo, isValidElement } = React
 
 import { Map } from 'immutable'
-import { listeners } from 'cluster';
+import { listeners, emit } from 'cluster';
 import { ReactComponentLike } from 'prop-types';
+import { EINTR } from 'constants';
 
 const Context = React.createContext<CellContext>(null)
-type CellContext = (pattern: any) => Cell
+interface CellContext {
+  (pattern: any): Cell
+  enqueue(cells: Cell[]): void
+}
 
 export default function Run({ children }: { children?: any }) {
   const loop = useLoop()
@@ -30,7 +34,7 @@ function useLoop() {
       const cells = root.current
       const key = asKey(pattern)
       if (!cells.has(key)) {
-        const cell = new Cell(pattern)
+        const cell = new Cell(get, pattern)
         const newCells = cells.set(key, cell)
         setCells(newCells)
         root.current = newCells
@@ -42,6 +46,7 @@ function useLoop() {
     get.render = () => [
       ...root.current.map(cell => cell.rendition).values()
     ]
+    get.enqueue = (cells: Iterable<Cell>) => {}
     return get
   }, [root, setCells])
 }
@@ -70,17 +75,39 @@ export const Print = ({ input }) => {
   return value
 }
 
-export class Cell {
-  constructor(public readonly evaluator: React.ReactElement) {}
+type Evaluator = (inputs: any, cell: Cell) => any
 
-  public readonly key: string = asKey(this.evaluator)
+export class Cell {
+  constructor(public readonly context: CellContext,
+    public readonly pattern: React.ReactElement,
+    public readonly evaluator: Evaluator = (pattern.type as any).evaluator) { }
+
+  public readonly key: string = asKey(this.pattern)
   public value: any = null
   public rendition = 
-    React.cloneElement(this.evaluator, { key: this.key, _: this })
+    React.cloneElement(this.pattern, { key: this.key, _: this })
 
-  private listeners: Listener[] = []
+  public addOutput(cell: Cell) {
+    this.outputs[cell.key] = cell
+  }
 
-  read(listener: Listener) {
+  private outputs: { [key: string]: Cell } = {}
+
+  public read(pattern: React.ReactElement) {
+    const target = this.context(pattern)
+    target.addOutput(this)
+    return target.value
+  }
+
+  private evaluate() {
+    const newVal = this.evaluator(this.pattern.props, this)
+    if (newVal !== this.value) {
+      this.value = newVal
+      this.context.enqueue(Object.values(this.outputs))
+    }
+  }
+
+  emit() {
     const { listeners } = this
     listeners.push(listener)
     listener(this.value)
@@ -92,14 +119,7 @@ export class Cell {
     }
   }
 
-  write = (value: any) => {
-    console.log('write', this.key, value)
-    const { listeners } = this
-    this.value = value
-    let i = listeners.length; while (i --> 0) {
-      listeners[i](value)
-    }
-  }
+  
 }
 
 const asKey = (key: any) =>

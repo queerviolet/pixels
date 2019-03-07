@@ -13,7 +13,7 @@ const frameCoordsFrom = ({
     2 * HEIGHT * (clientY - frame.top) / frame.height - HEIGHT,
   ]
 
-import Data from 'parcel-plugin-writable/Client'
+import Data from 'parcel-plugin-writable/client'
 
 import GL from 'luma.gl/constants'
 import { Matrix4 } from 'math.gl'
