@@ -111,7 +111,6 @@ class Client {
     sock.onmessage = this.onMessage
     sock.onerror = this.onError
     sock.onclose = this.onClose
-    sock.onopen = console.log
     this.sock = sock
   }
 

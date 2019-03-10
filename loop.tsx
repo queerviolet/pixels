@@ -26,23 +26,33 @@ interface CellContext {
 }
 
 
+const statDelta = (now, prev) => ({
+  batch: now.batch - prev.batch,
+  evaluations: now.evaluations - prev.evaluations,
+})
 export default function Run({
   loop, children
 }: { loop: CellContext, children?: any }) {
   const [ isReady, setIsReady ] = useState<boolean>(false)
   const [ effects, setEffects ] = useState<React.ReactElement[]>([])
   useEffect(() => {
-    console.log('%c Mounting on did evaluate...', 'color: fuchsia')
     if (!loop) {
       throw new Error('loop must be provided to Run')
     }
     setIsReady(true)
+    const stats = {
+      batch: 0, evaluations: 0,
+    }
+    let prev = {batch: 0, evaluations: 0}
     return loop.onDidEvaluate((cells) => {
-      console.log('-------- Did Evaluate ', cells.size, 'cells ---------')
+      stats.evaluations += cells.size
+      ++stats.batch
       const effects = loop.render()
-      console.log('effects:', effects)
+      if (stats.batch % 2 === 0) {
+        console.table({delta: statDelta(stats, prev), current: stats, prev})
+        prev = {...stats}
+      }
       setEffects(effects)
-      console.log('----------')
     })
   }, [loop])
 
@@ -81,7 +91,6 @@ export function createLoop(): CellContext {
   }
 
   function invalidate(cell: Cell) {
-    console.log('adding', cell, 'to dirty')
     dirty.add(cell)
   }
 
@@ -92,21 +101,19 @@ export function createLoop(): CellContext {
   function run() {
     while (dirty.size) {      
       const cells = new Set<Cell>(dirty.values())
-      console.log('%c Beginning evaluation of %s cells', 'color: red', cells.size)
+      //  console.log('%c Beginning evaluation of %s cells', 'color: red', cells.size)
       if (!cells.size) return
       dirty.clear()
       let current = null
       try {
         for (const cell of cells) {
           current = cell
-          console.log('evaluating', cell.key)
           cell.evaluate()
         }
       } catch (error) {
         console.error(new EvaluationError(error, current))
       }
-      console.log('%c did evaluate %s cells', 'color: red', cells.size)
-      console.log(didEvaluate)
+      // console.log('%c did evaluate %s cells', 'color: red', cells.size)
       didEvaluate(cells)
     }
   }
@@ -131,7 +138,6 @@ const withEvaluator: <T>(evaluator: Evaluator, input: T) => T & HasEvaluator =
 
 export const useRead = (input: React.ReactElement) => {
   const $ = useContext(Context)
-  console.log('$=', $)
   const [value, setValue] = useState($ && $(input))
   useEffect(() => {    
     const cell = $ && $(input)
@@ -150,7 +156,6 @@ export const Evaluate: <P>(evaluator: Evaluator, render?: Renderer) => (props: P
       evaluator,
       forwardRef((props: any, ref: React.Ref<any>) => {
         const $ = useContext(Context)
-        console.log('%c Context:', 'color: green', Context, typeof $)
         const cell = $(<Component {...props} />)
         React.useImperativeHandle(ref, () => cell, [cell])
         return render(cell)
@@ -184,13 +189,12 @@ class Effect<T=any> {
   }
 
   write = (value: T) => {
-    console.log('effect', this.rendition, 'writes', value)
     this.value = value
     this.cell.invalidate()
   }
 
   set effect(effect: React.ReactElement) {
-    this.rendition = createRendition<T>(effect, this.write)
+    this.rendition = createRendition<T>(effect, this.cell.key, this.write)
   }
 
   get effect() {
@@ -200,11 +204,12 @@ class Effect<T=any> {
   public rendition: React.ReactElement
 }
 
-function createRendition<T>(effect: React.ReactElement, write: (value: T) => void) {
+function createRendition<T>(effect: React.ReactElement, cellKey: string,  write: (value: T) => void) {
+  const key = `${cellKey}/${effect.key}`
   if (effect.type instanceof React.Component || typeof effect.type === 'string') {
-    return React.cloneElement(effect, {ref: write})
+    return React.cloneElement(effect, {key, ref: write})
   }
-  return React.cloneElement(effect, {_: write})
+  return React.cloneElement(effect, {key, _: write})
 }
 
 const NilEvaluator = (_args, cell) => cell.value
@@ -217,12 +222,14 @@ export class Cell {
     public readonly pattern: Pattern,
     public readonly evaluator: Evaluator = getEvaluator(pattern)) { }
 
-  public readonly key: string | symbol = asKey(this.pattern)
+  public readonly key: string = asKey(this.pattern)
   public value: any = null
   public effects: { [key: string]: Effect } = {}
 
-  get rendition(): React.ReactElement[] {    
-    return Object.values(this.effects).map(e => e.rendition).filter(Boolean)
+  get rendition(): React.ReactElement[] {
+    const effects = Object.values(this.effects)
+    if (!effects.length) return null
+    return effects.map(e => e.rendition).filter(Boolean)
   }
 
   public addOutput(cell: Cell) {
@@ -259,13 +266,12 @@ export class Cell {
 
   public evaluate() {
     this.value = this.evaluator(this.pattern.props, this)
-    console.log(this.key, '->', this.value)
     this.context.invalidateAll(Object.values(this.outputs))
   }  
 }
 
 const asKey = (key: any) =>
-  typeof key === 'string' || typeof key === 'symbol'
+  typeof key === 'string'
     ? key    
     :
   asKeyPart(key)

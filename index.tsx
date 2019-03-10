@@ -18,7 +18,7 @@ import Data from 'parcel-plugin-writable/client'
 import GL from 'luma.gl/constants'
 import { Matrix4 } from 'math.gl'
 import { withParameters, AnimationLoop, VertexArray, Buffer, Program, Cube, } from 'luma.gl'
-import { sync, StreamNode } from './buffer'
+import { sync, StreamNode, Stream } from './buffer'
 
 import { render } from 'react-dom'
 import * as React from 'react'
@@ -74,15 +74,14 @@ const ReadStroke = Evaluate<WithPath & WithData>(
   }, cell) {
     cell.effect(
       <CopyEventsToStroke key='copy-events'
-        data={data}  />
+        stroke={cell.read(data).value} />
     )
 
     return cell.read(data).value
   }
 )
 
-function CopyEventsToStroke({ data }: { data: React.ReactElement }) {
-  const stroke = useRead(data).value
+function CopyEventsToStroke({ stroke }: { stroke: any }) {
   const receiver = useRef<HTMLDivElement>()
 
   useEffect(() => {
@@ -102,16 +101,15 @@ function CopyEventsToStroke({ data }: { data: React.ReactElement }) {
           pos: frameCoordsFrom(touch),
           pressure: touch.force,
         })
-        console.log('emitted', t)
       }
     }
 
     function onMouseMove(ev: MouseEvent) {
-      console.log(ev)
       stroke({
         pos: frameCoordsFrom(ev),
         pressure: 0.5
       })
+      console.log(ev)
     }
 
     return () => {
@@ -120,7 +118,7 @@ function CopyEventsToStroke({ data }: { data: React.ReactElement }) {
       canvas.removeEventListener('touchmove', onTouch)
       canvas.removeEventListener('touchend', onTouch)
     }
-  }, [receiver, data])
+  }, [receiver, stroke])
   
   return <div ref={receiver} style={{width: '100%', height: '100%'}} />
 }
