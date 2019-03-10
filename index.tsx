@@ -18,26 +18,27 @@ import Data from 'parcel-plugin-writable/client'
 import GL from 'luma.gl/constants'
 import { Matrix4 } from 'math.gl'
 import { withParameters, AnimationLoop, VertexArray, Buffer, Program, Cube, } from 'luma.gl'
-import { sync } from './buffer'
+import { sync, StreamNode } from './buffer'
 
 import { render } from 'react-dom'
 import * as React from 'react'
-import Loop, { Print, Value, Cell, useRead } from './loop'
-import { ReactElement, useRef, useEffect, useContext } from 'react';
+import Loop, { Print, Value, Cell, useRead, Evaluate, createLoop } from './loop'
+import { ReactElement, useRef, useEffect, useContext, MutableRefObject } from 'react';
 import { Schema } from 'var:*';
 
 const GLContext = React.createContext(null)
 
-function Run({ input }) {
-  const ver = useRef(0)
-  ;(global as any).ran = useRead(input)
-  return <h1>{++ver.current}</h1>
-}
+const DataBuffer = Evaluate<WithPath & WithSchema>(
+  function DataBuffer({ schema, path }, cell) {
+    const buffer = cell.effect<StreamNode>(<AllocDataBuffer key='alloc-buffer'
+      path={path} schema={schema} />)
+    return buffer
+  })
 
-function DataBuffer({ _, schema, path }: WithPath & WithCell & WithSchema) {
+const AllocDataBuffer = ({ _, schema, path }: Output<StreamNode> | any) => {
   const gl = useContext(GLContext)
-  console.log('******gl=', gl)  
   useEffect(() => {
+    console.log('===============Alloc data buffer gl=', gl)
     if (!gl) return
     const keys = Object.keys(schema)
     const out = {}
@@ -45,46 +46,52 @@ function DataBuffer({ _, schema, path }: WithPath & WithCell & WithSchema) {
       const k = keys[i]
       out[k] = sync(gl, schema[k])
     }
-    _.write(Data(path)(out))
-    return
-  }, [gl, schema])
+    _(Data(path)(out))
+    return // TODO: Unlisten to the sync action, dispose buffer
+  }, [gl, schema, path])
   return null
 }
 
+type Output<T> = { _: (value: T) => void }
 
-function ReadStroke({
-  _,
-  path,
-  data = <DataBuffer
-    path={path}
-    schema={{
-      pos: {
-        size: 2,
-        type: GL.FLOAT,
-      },
-      pressure: {
-        size: 1,
-        type: GL.FLOAT
-      }
-    }} />
-}: WithData & WithPath & WithCell) {
-  const gl = useContext(GLContext)
-  const ref = useRef<HTMLDivElement>()
-  const stroke = useRead(data)
-  console.log('stroke=', stroke)
-  stroke && _.write(stroke)
+
+const ReadStroke = Evaluate<WithPath & WithData>(
+  function ReadStroke({
+    path,
+    data = <DataBuffer
+      path={path}
+      schema={{
+        pos: {
+          size: 2,
+          type: GL.FLOAT,
+        },
+        pressure: {
+          size: 1,
+          type: GL.FLOAT
+        }
+      }} />
+  }, cell) {
+    cell.effect(
+      <CopyEventsToStroke key='copy-events'
+        data={data}  />
+    )
+
+    return cell.read(data).value
+  }
+)
+
+function CopyEventsToStroke({ data }: { data: React.ReactElement }) {
+  const stroke = useRead(data).value
+  const receiver = useRef<HTMLDivElement>()
+
   useEffect(() => {
-    if (!ref.current || !gl || !stroke) return
-    const canvas = ref.current!
-    canvas.addEventListener('mousemove', ev => {
-      stroke({
-        pos: frameCoordsFrom(ev),
-        pressure: 0.5
-      })
-    })
+    if (!receiver.current || !stroke) return
+    const canvas = receiver.current 
+    canvas.addEventListener('mousemove', onMouseMove)
     canvas.addEventListener('touchstart', onTouch)
     canvas.addEventListener('touchmove', onTouch)
     canvas.addEventListener('touchend', onTouch)
+
     function onTouch(t: TouchEvent) {
       const { touches } = t
       t.preventDefault()
@@ -94,15 +101,29 @@ function ReadStroke({
           pos: frameCoordsFrom(touch),
           pressure: touch.force,
         })
+        console.log('emitted', t)
       }
     }
+
+    function onMouseMove(ev: MouseEvent) {
+      console.log(ev)
+      stroke({
+        pos: frameCoordsFrom(ev),
+        pressure: 0.5
+      })
+    }
+
     return () => {
-      console.log('TODO: Detach listeners')
-    }    
-  }, [ref.current, stroke, gl])
-  return <div ref={ref} style={{width: '100%', height: '100%'}} />
+      canvas.removeEventListener('mousemove', onMouseMove)
+      canvas.removeEventListener('touchstart', onTouch)
+      canvas.removeEventListener('touchmove', onTouch)
+      canvas.removeEventListener('touchend', onTouch)
+    }
+  }, [receiver, data])
+  
+  return <div ref={receiver} style={{width: '100%', height: '100%'}} />
 }
-type WithCell = { _?: Cell }
+
 type WithPath = { path?: string }
 type WithSchema = { schema: Schema }
 type WithData = { data?: ReactElement }
@@ -114,15 +135,17 @@ type WithData = { data?: ReactElement }
 new AnimationLoop({
   useDevicePixels: true,
   onInitialize({ gl, canvas }) {
+    const loop = createLoop()
+
     render(
-      <GLContext.Provider value={gl}>
-        <Loop>
-          <Print input={<Value value='hi there' />} />
-          <Print input={<Value value='hi there' />} />
-          <Print input={<Value value='should be only one hello' />} />
-          <Run input={<ReadStroke path="another-stroke" />} />
-        </Loop>
-      </GLContext.Provider>,
+        <GLContext.Provider value={gl}>
+          <Loop loop={loop}>
+            <Print input={<Value value='hi there' />} />
+            <Print input={<Value value='hi there' />} />
+            <Print input={<Value value='should be only one hello' />} />
+            <ReadStroke path="another-stroke" />
+          </Loop>
+        </GLContext.Provider>,
       document.getElementById('main'))
 
     const stroke = Data('stroke')({
@@ -166,14 +189,18 @@ new AnimationLoop({
     return {
       program,  
       stroke,
-      vertexArray,      
+      vertexArray, 
+      loop     
     }
   },
 
-  onRender({ gl, program, vertexArray, stroke }) {
+  onRender({ gl, loop, program, vertexArray, stroke }) {
+    loop.run()
+
     gl.clearColor(0.0, 0.0, 0.0, 1.0)
     gl.clear(GL.COLOR_BUFFER_BIT)
     if (!stroke.pos.stream.buffer) return
+    if (!stroke.pressure.stream.buffer) return
     vertexArray.setAttributes({
       pos: stroke.pos.stream.buffer,
       pressure: stroke.pressure.stream.buffer,

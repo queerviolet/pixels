@@ -1,8 +1,8 @@
 import * as React from 'react'
 const { useState, useRef, useEffect, useContext, useMemo, isValidElement } = React
 
-import { ReactComponentLike } from 'prop-types';
-import { forwardRef } from 'react'
+import { ReactComponentLike, symbol, bool } from 'prop-types';
+import { forwardRef, MutableRefObject } from 'react'
 import createEvent, { Event, Emitter } from './event'
 
 const Context = React.createContext<CellContext>(null)
@@ -12,50 +12,59 @@ type HasEvaluator = {
 }
 
 type Pattern = {
-  type: Partial<HasEvaluator>
+  type: Partial<HasEvaluator> | React.ReactElement['type']
   props: any
 }
 
 interface CellContext {
   (pattern: any): Cell
   onDidEvaluate: Event<Set<Cell>>
-  create(pattern: Pattern, evaluator?: Evaluator): Cell
   invalidate(cell: Cell): void
   invalidateAll(cells: Iterable<Cell>): void
-  render(): React.ReactElement
+  render(): React.ReactElement[]
   run(): void
 }
 
-export default function Run({ children }: { children?: any }) {
-  const loop = useMemo(() => createLoop(), [])
-  ;(window as any).loop = loop
-  const data = loop.render()
+
+export default function Run({
+  loop, children
+}: { loop: CellContext, children?: any }) {
+  const [ isReady, setIsReady ] = useState<boolean>(false)
+  const [ effects, setEffects ] = useState<React.ReactElement[]>([])
   useEffect(() => {
-    let raf = null
-    function tick() {
-      raf = requestAnimationFrame(loop.run)
-      loop.run()
+    console.log('%c Mounting on did evaluate...', 'color: fuchsia')
+    if (!loop) {
+      throw new Error('loop must be provided to Run')
     }
-    tick()
-    return () => cancelAnimationFrame(raf)
-  }, [])
+    setIsReady(true)
+    return loop.onDidEvaluate((cells) => {
+      console.log('-------- Did Evaluate ', cells.size, 'cells ---------')
+      const effects = loop.render()
+      console.log('effects:', effects)
+      setEffects(effects)
+      console.log('----------')
+    })
+  }, [loop])
+
+  if (!isReady) return null
+
   return <Context.Provider value={loop}>{
     children
   }{
-    data
+    effects
   }</Context.Provider>
 }
 
 type Listener = (data: any) => void
+type Cells = Map<string | symbol, Cell>
 
-type Cells = Map<string, Cell>
-
-function createLoop(): CellContext {
+export function createLoop(): CellContext {
   const cells: Cells = new Map
   const dirty = new Set<Cell>()
 
   let didEvaluate: Emitter<Set<Cell>> | null = null
-  const onDidEvaluate = createEvent(emit => didEvaluate = emit)
+  const onDidEvaluate = createEvent(emit => { didEvaluate = emit })
+  ;(window as any).de = didEvaluate
 
   const get: any = (pattern: any) => {
     const key = asKey(pattern)
@@ -65,7 +74,6 @@ function createLoop(): CellContext {
       invalidate(cell)
       return cell
     }
-    console.log('cell(', key, ')=', cells.get(key))
     return cells.get(key)
   }
 
@@ -76,6 +84,7 @@ function createLoop(): CellContext {
   }
 
   function invalidate(cell: Cell) {
+    console.log('adding', cell, 'to dirty')
     dirty.add(cell)
   }
 
@@ -83,25 +92,39 @@ function createLoop(): CellContext {
     for (const c of cells) dirty.add(c)
   }
 
-  function create(pattern: Pattern, evaluator: Evaluator) {
-    const cell = new Cell(get, pattern, evaluator)
-    return cell
-  }
-
   function run() {
-    const cells = new Set<Cell>(dirty.values())
-    if (!cells.size) return
-    dirty.clear()
-    for (const cell of cells) {
-      cell.evaluate()
+    while (dirty.size) {      
+      const cells = new Set<Cell>(dirty.values())
+      console.log('%c Beginning evaluation of %s cells', 'color: red', cells.size)
+      if (!cells.size) return
+      dirty.clear()
+      let current = null
+      try {
+        for (const cell of cells) {
+          current = cell
+          console.log('evaluating', cell.key)
+          cell.evaluate()
+        }
+      } catch (error) {
+        console.error(new EvaluationError(error, current))
+      }
+      console.log('%c did evaluate %s cells', 'color: red', cells.size)
+      console.log(didEvaluate)
+      didEvaluate(cells)
     }
-    didEvaluate(cells)
   }
 
   return Object.assign(get, {
     onDidEvaluate,
-    cells, dirty, render, invalidate, invalidateAll, create, run })
+    cells, dirty, render, invalidate, invalidateAll, run })
 }
+
+class EvaluationError extends Error {
+  constructor(public error: Error, public cell: Cell) {
+    super(`Evaluation error: ${error.message} in cell ${String(cell.key)}`)
+  }
+}
+
 
 const withEvaluator: <T>(evaluator: Evaluator, input: T) => T & HasEvaluator =
   (evaluator, input) => {
@@ -110,113 +133,176 @@ const withEvaluator: <T>(evaluator: Evaluator, input: T) => T & HasEvaluator =
   }
 
 export const useRead = (input: React.ReactElement) => {
-  const $ = useContext(Context)  
-  const [value, setValue] = useState()
-  useEffect(() => {
-    const cell = $(input)
-    $.onDidEvaluate(changes =>
-      changes.has(cell) && setValue(cell.value))
-  })
+  const $ = useContext(Context)
+  console.log('$=', $)
+  const [value, setValue] = useState($ && $(input))
+  useEffect(() => {    
+    const cell = $ && $(input)
+    return $ && $.onDidEvaluate(changes =>
+      changes.has(cell) && setValue(cell))
+  }, [input])
   return value
 }
 
 type Renderer = (cell: Cell) => React.ReactElement
 const None: Renderer = () => null
 
-const Evaluate: <P>(evaluator: Evaluator, render?: Renderer) => React.FunctionComponent<P>
+export const Evaluate: <P>(evaluator: Evaluator, render?: Renderer) => (props: P) => React.ReactElement
   = (evaluator, render=None) => {
     const Component = withEvaluator(
       evaluator,
       forwardRef((props: any, ref: React.Ref<any>) => {
         const $ = useContext(Context)
+        console.log('%c Context:', 'color: green', Context, typeof $)
         const cell = $(<Component {...props} />)
         React.useImperativeHandle(ref, () => cell, [cell])
         return render(cell)
-      }))
-      return Component
-    }
+      })
+    )
+    Component.displayName = evaluator.name
+    return Component
+  }
 
 interface WithValue { value: any }
 interface WithInput { input: Pattern }
 export const Value = Evaluate<WithValue>(({ value }) => value)
 
 export function Print({ input }) {
-  const value = useRead(input)
-  console.log(input, '->', value)
+  const value = useRead(input).value
   return value || 'no value'
 }
 
 type Evaluator = (inputs: any, cell: Cell) => any
 
 class Effect<T=any> {
-  public ref: React.Ref<T> = { current: null }
+  public value: T
 
-  constructor(public effect: React.ReactElement) {
+  constructor(
+    effect: React.ReactElement,
+    public cell: Cell
+    ) {
     if (!effect.key)
       throw new Error('Effects must have keys')
+    this.effect = effect
   }
+
+  write = (value: T) => {
+    console.log('effect', this.rendition, 'writes', value)
+    this.value = value
+    this.cell.invalidate()
+  }
+
+  set effect(effect: React.ReactElement) {
+    this.rendition = createRendition<T>(effect, this.write)
+  }
+
+  get effect() {
+    return this.rendition
+  }
+
+  public rendition: React.ReactElement
 }
 
+function createRendition<T>(effect: React.ReactElement, write: (value: T) => void) {
+  if (effect.type instanceof React.Component || typeof effect.type === 'string') {
+    return React.cloneElement(effect, {ref: write})
+  }
+  return React.cloneElement(effect, {_: write})
+}
+
+const NilEvaluator = (_args, cell) => cell.value
+
+const getEvaluator = (pattern: any): Evaluator =>
+  (pattern && pattern.type && pattern.type.evaluator) || NilEvaluator
 
 export class Cell {
   constructor(public readonly context: CellContext,
     public readonly pattern: Pattern,
-    public readonly evaluator: Evaluator = (pattern.type as any).evaluator) { }
+    public readonly evaluator: Evaluator = getEvaluator(pattern)) { }
 
-  public readonly key: string = asKey(this.pattern)
+  public readonly key: string | symbol = asKey(this.pattern)
   public value: any = null
   public effects: { [key: string]: Effect } = {}
 
-  get rendition(): React.ReactElement[] {
-    return Object.values(this.effects)
-      .map(({ effect }) => React.cloneElement(effect, { _: this }))
+  get rendition(): React.ReactElement[] {    
+    return Object.values(this.effects).map(e => e.rendition).filter(Boolean)
   }
 
   public addOutput(cell: Cell) {
-    this.outputs[cell.key] = cell
+    this.outputs[cell.key as string] = cell
   }
 
   private outputs: { [key: string]: Cell } = {}
 
-  public read(pattern: Pattern) {
+  public read(pattern: Pattern | string | symbol) {
     const target = this.context(pattern)
     target.addOutput(this)
     return target
   }
 
-  public effect<T>(effect: Effect<T>['effect']): React.Ref<T> {
+  public effect<T>(effect: Effect<T>['effect']): T {
     const { effects } = this
     const existing = effects[effect.key]
     if (!existing) {
-      effects[effect.key] = new Effect(effect)
+      effects[effect.key] = new Effect(effect, this)
     } else {
       existing.effect = effect
     }
-    return effects[effect.key].ref
+    return effects[effect.key].value
+  }
+
+  public invalidate() {
+    this.context.invalidate(this)
+  }
+
+  public write = (value: any) => {
+    this.value = value
+    this.context.invalidateAll(Object.values(this.outputs))
   }
 
   public evaluate() {
     this.value = this.evaluator(this.pattern.props, this)
+    console.log(this.key, '->', this.value)
     this.context.invalidateAll(Object.values(this.outputs))
   }  
 }
 
 const asKey = (key: any) =>
-  typeof key === 'string' ? key
-    : JSON.stringify(toJson(key), serialize)
+  typeof key === 'string' || typeof key === 'symbol'
+    ? key    
+    :
+  asKeyPart(key)
+   
+
+const asKeyPart = (part: any) =>
+  typeof part === 'symbol' || typeof part === 'function'
+    ? repr(part)
+    :
+    React.isValidElement(part)
+    ? repr((part.type as any).evaluator || part.type) + asKey(part.props)
+    :
+    (part && typeof part === 'object')
+    ? '(' +
+      Object.keys(part).map(
+        k => `${JSON.stringify(k)}: ${asKeyPart(part[k])}`
+      ).join(', ') +
+      ')'
+    :
+    JSON.stringify(part)
+
 
 const REPR = Symbol('Cached JSON representation of constant values')
+const symMap = new Map<symbol, string>()
 let nextId = 0
-function serialize(key: string, value: any) {
-  if (value[REPR]) return value[REPR]
-  if (typeof value === 'function') {
-    const name = value.displayName || value.name
-    return value[REPR] = {
-      type: '__function__',
-      id: `${name}/${nextId++}`
-    }
+const repr = (key: any) => {
+  if (typeof key === 'string') return JSON.stringify(key)
+  if (typeof key === 'symbol') {
+    if (!symMap.has(key))
+      symMap.set(key, `[${nextId++}/${String(key)}]`)
+    return symMap.get(key)
   }
-  return value
+  if (key[REPR]) return key[REPR]
+  return key[REPR] = `[${nextId++}/Function(${key.displayName || key.name})]`
 }
 
 const toJson = (val: any) =>

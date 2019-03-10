@@ -11,7 +11,7 @@ declare interface Buffer {
 
 import { Node, Read } from 'parcel-plugin-writable/var.d'
 
-type StreamNode = { stream: Stream, push: Node, subscription: Unsubscribable }
+export type StreamNode = { stream: Stream, push: Node, subscription: Unsubscribable }
 
 export const sync = (gl: any, accessor: any) =>
   (push: Node, read: Read): StreamNode => {
