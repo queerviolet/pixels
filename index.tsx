@@ -28,17 +28,19 @@ import { Schema } from 'var:*';
 
 const GLContext = React.createContext(null)
 
-const DataBuffer = Evaluate<WithPath & WithSchema>(
+const DataBuffer = Evaluate <WithPath & WithSchema> (
   function DataBuffer({ schema, path }, cell) {
-    const buffer = cell.effect<StreamNode>(<AllocDataBuffer key='alloc-buffer'
-      path={path} schema={schema} />)
-    return buffer
-  })
+    return cell.effect <StreamNode> (
+      <AllocDataBuffer key='alloc-buffer'
+        path={path}
+        schema={schema} />
+    )
+  }
+)
 
 const AllocDataBuffer = ({ _, schema, path }: Output<StreamNode> | any) => {
   const gl = useContext(GLContext)
   useEffect(() => {
-    console.log('===============Alloc data buffer gl=', gl)
     if (!gl) return
     const keys = Object.keys(schema)
     const out = {}
@@ -53,7 +55,6 @@ const AllocDataBuffer = ({ _, schema, path }: Output<StreamNode> | any) => {
 }
 
 type Output<T> = { _: (value: T) => void }
-
 
 const ReadStroke = Evaluate<WithPath & WithData>(
   function ReadStroke({
@@ -128,14 +129,11 @@ type WithPath = { path?: string }
 type WithSchema = { schema: Schema }
 type WithData = { data?: ReactElement }
 
-// type Accessor = { size: number, type: any }
-// type MutableBufferProps = Accessor & Receiver
-// const MutableBuffer = ({ size, type, _ }: MutableBufferProps) => {}
-
-new AnimationLoop({
+const lumaLoop = new AnimationLoop({
   useDevicePixels: true,
   onInitialize({ gl, canvas }) {
     const loop = createLoop()
+    ;(window as any).loop = loop
 
     render(
         <GLContext.Provider value={gl}>
@@ -232,4 +230,12 @@ new AnimationLoop({
       drawMode: GL.POINTS,     
     }))
   }
-}).start()
+})
+
+lumaLoop.start()
+import hot from './hot'
+hot(module).onDispose(() => {
+  lumaLoop.stop()
+  const { canvas } = lumaLoop.gl
+  canvas && canvas.parentNode.removeChild(canvas)
+})

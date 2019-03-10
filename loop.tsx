@@ -48,14 +48,12 @@ export default function Run({
 
   if (!isReady) return null
 
-  return <Context.Provider value={loop}>{
-    children
-  }{
-    effects
-  }</Context.Provider>
+  return <Context.Provider value={loop}>
+    {children}
+    {effects}
+  </Context.Provider>
 }
 
-type Listener = (data: any) => void
 type Cells = Map<string | symbol, Cell>
 
 export function createLoop(): CellContext {
@@ -64,7 +62,6 @@ export function createLoop(): CellContext {
 
   let didEvaluate: Emitter<Set<Cell>> | null = null
   const onDidEvaluate = createEvent(emit => { didEvaluate = emit })
-  ;(window as any).de = didEvaluate
 
   const get: any = (pattern: any) => {
     const key = asKey(pattern)
