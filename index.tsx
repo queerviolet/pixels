@@ -17,12 +17,12 @@ import Data from 'parcel-plugin-writable/client'
 
 import GL from 'luma.gl/constants'
 import { Matrix4 } from 'math.gl'
-import { withParameters, AnimationLoop, VertexArray, Buffer, Program, Cube, } from 'luma.gl'
+import * as Luma from 'luma.gl'
 import { sync, StreamNode, Stream } from './buffer'
 
 import { render } from 'react-dom'
 import * as React from 'react'
-import Loop, { Print, Value, Cell, useRead, Evaluate, createLoop } from './loop'
+import Loop, { Print, Value, Cell, useRead, Evaluate, createLoop, isContext } from './loop'
 import { ReactElement, useRef, useEffect, useContext, MutableRefObject } from 'react';
 import { Schema } from 'var:*';
 
@@ -72,16 +72,14 @@ const ReadStroke = Evaluate<WithPath & WithData>(
         }
       }} />
   }, cell) {
-    cell.effect(
+    return cell.effect(
       <CopyEventsToStroke key='copy-events'
         stroke={cell.read(data).value} />
     )
-
-    return cell.read(data).value
   }
 )
 
-function CopyEventsToStroke({ stroke }: { stroke: any }) {
+function CopyEventsToStroke({ _, stroke }: any) {
   const receiver = useRef<HTMLDivElement>()
 
   useEffect(() => {
@@ -109,6 +107,7 @@ function CopyEventsToStroke({ stroke }: { stroke: any }) {
         pos: frameCoordsFrom(ev),
         pressure: 0.5
       })
+      _(stroke)
       console.log(ev)
     }
 
@@ -126,12 +125,91 @@ function CopyEventsToStroke({ stroke }: { stroke: any }) {
 type WithPath = { path?: string }
 type WithSchema = { schema: Schema }
 type WithData = { data?: ReactElement }
+type WithShaderSource = { vs: string, fs: string }
+type WithProgram = { program?: ReactElement }
 
-const lumaLoop = new AnimationLoop({
+const Shader = Evaluate<WithShaderSource>(
+  function Shader({ vs, fs }, cell) {
+    return cell.effect(
+      <ShaderProgram key='program' vs={vs} fs={fs} />
+    )
+  }
+)
+
+function ShaderProgram({ _, vs, fs }: any) {
+  const gl = useContext(GLContext)
+  useEffect(() => {    
+    const program = new Luma.Program(gl, { vs, fs })    
+    _(program)
+    return () => program.delete()
+  }, [gl, vs, fs])
+  return null
+}
+
+const Draw = Evaluate<any> (
+  function Draw({ program, vertexArray: update, drawMode=GL.POINTS, params }, cell) {
+    const gl = cell.read(GLContext).value
+    if (!gl) return
+
+    const p = cell.read(program).value
+    if (!p) return
+    const vertexArray = update && cell.effect(
+      <VertexArrayForProgram key='create-vertex-array' program={p} />
+    )
+    if (!vertexArray) return
+    const vertexCount = vertexArray ? update({ vertexArray }, cell) : 0
+    if (!vertexCount) return
+
+    const draw = () => p.draw({
+      vertexArray,
+      vertexCount,
+      drawMode,
+    })
+
+    console.log('drawing', vertexArray, vertexCount)
+    if (params)
+      Luma.withParameters(gl, params, draw)
+    else
+      draw()
+    return (cell.value || 0) + 1
+  }
+)
+
+const readFromStroke = (stroke: any) => ({ vertexArray }, cell) => {
+  const s = cell.read(stroke).value
+  if (!s || !vertexArray || !s.pos.stream.buffer || !s.pressure.stream.buffer) {
+    console.log(vertexArray)
+    return 0
+  }
+
+  console.log('setting attributes', s.pos.stream.buffer, s.pressure.stream.buffer)
+  ;(window as any).s = s
+  
+  vertexArray.setAttributes({
+    pos: s.pos.stream.buffer,
+    pressure: s.pressure.stream.buffer,
+  })
+  return s.pos.stream.count
+}
+
+function VertexArrayForProgram({ _, program }: any) {
+  const gl = useContext(GLContext)
+  useEffect(() => {
+    if (!gl || !program) return
+    const vertexArray = new Luma.VertexArray(gl, { program });
+    _(vertexArray)
+  }, [gl, program])
+  return null
+}
+
+
+const lumaLoop = new Luma.AnimationLoop({
   useDevicePixels: true,
   onInitialize({ gl, canvas }) {
     const loop = createLoop()
     ;(window as any).loop = loop
+
+    loop(GLContext).write(gl)
 
     render(
         <GLContext.Provider value={gl}>
@@ -139,7 +217,41 @@ const lumaLoop = new AnimationLoop({
             <Print input={<Value value='hi there' />} />
             <Print input={<Value value='hi there' />} />
             <Print input={<Value value='should be only one hello' />} />
-            <ReadStroke path="another-stroke" />
+            <Draw
+              params={{
+                [GL.BLEND]: true,
+                // blendColor: [GL.BLEND_COLOR],
+                // blendEquation: [GL.FUNC_ADDGL.BLEND_EQUATION_RGB, GL.BLEND_EQUATION_ALPHA],
+                // blendFunc: [GL.BLEND_SRC_RGB, GL.BLEND_SRC_ALPHA],
+          
+                blendFuncPart: [GL.ONE_MINUS_SRC_ALPHA, GL.ZERO, GL.CONSTANT_ALPHA, GL.ZERO],
+              }}
+              program={
+                <Shader
+                  vs={`
+                    attribute vec2 pos;
+                    attribute float pressure;
+                    uniform mat4 uProjection;
+                    varying float vPressure;
+            
+                    void main() {
+                      gl_Position = uProjection * vec4(pos.x, pos.y, 0.0, 1.0);
+                      gl_PointSize = 5.0 * pressure * 7.0;
+                      vPressure = pressure;
+                    }
+                  `}
+                  fs={`
+                    precision highp float;
+                    varying float vPressure;
+            
+                    void main() {
+                      gl_FragColor = vec4(1.0, 1.0, 1.0, vPressure);
+                    }
+                  `} />
+              }
+              vertexArray={
+                readFromStroke(<ReadStroke path="another-stroke" />)
+              } />
           </Loop>
         </GLContext.Provider>,
       document.getElementById('main'))
@@ -156,7 +268,7 @@ const lumaLoop = new AnimationLoop({
     })
     ;(window as any).stroke = stroke
 
-    const program = new Program(gl, {
+    const program = new Luma.Program(gl, {
       vs: `
         attribute vec2 pos;
         attribute float pressure;
@@ -180,7 +292,7 @@ const lumaLoop = new AnimationLoop({
     })
 
     canvas.style = ''
-    const vertexArray = new VertexArray(gl, { program });
+    const vertexArray = new Luma.VertexArray(gl, { program });
     
     return {
       program,  
@@ -191,44 +303,46 @@ const lumaLoop = new AnimationLoop({
   },
 
   onRender({ gl, loop, program, vertexArray, stroke }) {
+    // gl.clearColor(0.0, 0.0, 0.0, 1.0)
+    // gl.clear(GL.COLOR_BUFFER_BIT)
+    // if (!stroke.pos.stream.buffer) return
+    // if (!stroke.pressure.stream.buffer) return
+    // vertexArray.setAttributes({
+    //   pos: stroke.pos.stream.buffer,
+    //   pressure: stroke.pressure.stream.buffer,
+    // })
+
+    // const uProjection = new Matrix4().ortho({
+    //   top: -9,
+    //   bottom: 9,
+    //   left: -16,
+    //   right: 16, 
+    //   near: -1, far: 1000
+    // })
+
+    // program.setUniforms({
+    //   uProjection
+    // })
+
+    // Luma.withParameters(gl, {
+    //   [GL.BLEND]: true,
+    //   // blendColor: [GL.BLEND_COLOR],
+    //   // blendEquation: [GL.FUNC_ADDGL.BLEND_EQUATION_RGB, GL.BLEND_EQUATION_ALPHA],
+    //   // blendFunc: [GL.BLEND_SRC_RGB, GL.BLEND_SRC_ALPHA],
+
+    //   blendFuncPart: [GL.ONE_MINUS_SRC_ALPHA, GL.ZERO, GL.CONSTANT_ALPHA, GL.ZERO],
+    //   // blendEquation: GL.FUNC_ADD
+    // }, () => program.draw({
+    //   vertexArray,
+    //   vertexCount: stroke.pos.stream.count,
+    //   drawMode: GL.POINTS,     
+    // }))
+
     loop.run()
-
-    gl.clearColor(0.0, 0.0, 0.0, 1.0)
-    gl.clear(GL.COLOR_BUFFER_BIT)
-    if (!stroke.pos.stream.buffer) return
-    if (!stroke.pressure.stream.buffer) return
-    vertexArray.setAttributes({
-      pos: stroke.pos.stream.buffer,
-      pressure: stroke.pressure.stream.buffer,
-    })
-
-    const uProjection = new Matrix4().ortho({
-      top: -9,
-      bottom: 9,
-      left: -16,
-      right: 16, 
-      near: -1, far: 1000
-    })
-
-    program.setUniforms({
-      uProjection
-    })
-
-    withParameters(gl, {
-      [GL.BLEND]: true,
-      // blendColor: [GL.BLEND_COLOR],
-      // blendEquation: [GL.FUNC_ADDGL.BLEND_EQUATION_RGB, GL.BLEND_EQUATION_ALPHA],
-      // blendFunc: [GL.BLEND_SRC_RGB, GL.BLEND_SRC_ALPHA],
-
-      blendFuncPart: [GL.ONE_MINUS_SRC_ALPHA, GL.ZERO, GL.CONSTANT_ALPHA, GL.ZERO],
-      // blendEquation: GL.FUNC_ADD
-    }, () => program.draw({
-      vertexArray,
-      vertexCount: stroke.pos.stream.count,
-      drawMode: GL.POINTS,     
-    }))
   }
 })
+
+console.log(GLContext, isContext(GLContext))
 
 lumaLoop.start()
 import hot from './hot'

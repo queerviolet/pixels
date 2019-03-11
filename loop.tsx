@@ -171,6 +171,7 @@ export const Value = Evaluate<WithValue>(({ value }) => value)
 
 export function Print({ input }) {
   const value = useRead(input).value
+  console.log(input, '->',  value)
   return value || 'no value'
 }
 
@@ -238,7 +239,7 @@ export class Cell {
 
   private outputs: { [key: string]: Cell } = {}
 
-  public read(pattern: Pattern | string | symbol) {
+  public read(pattern: any): Cell {
     const target = this.context(pattern)
     target.addOutput(this)
     return target
@@ -270,21 +271,27 @@ export class Cell {
   }  
 }
 
+console.log('Context:', Context)
+export const isContext = (c: any): c is React.Context<any> =>
+  c.$$typeof === (Context as any).$$typeof
+
 const asKey = (key: any) =>
   typeof key === 'string'
     ? key    
     :
   asKeyPart(key)
    
-
 const asKeyPart = (part: any) =>
   typeof part === 'symbol' || typeof part === 'function'
     ? repr(part)
     :
-    React.isValidElement(part)
+  isContext(part)
+    ? repr(part, 'Context')
+    :
+  React.isValidElement(part)
     ? repr((part.type as any).evaluator || part.type) + asKey(part.props)
     :
-    (part && typeof part === 'object')
+  (part && typeof part === 'object')
     ? '(' +
       Object.keys(part).map(
         k => `${JSON.stringify(k)}: ${asKeyPart(part[k])}`
@@ -297,15 +304,15 @@ const asKeyPart = (part: any) =>
 const REPR = Symbol('Cached JSON representation of constant values')
 const symMap = new Map<symbol, string>()
 let nextId = 0
-const repr = (key: any) => {
+const repr = (key: any, kind='Function') => {
   if (typeof key === 'string') return JSON.stringify(key)
   if (typeof key === 'symbol') {
     if (!symMap.has(key))
       symMap.set(key, `[${nextId++}/${String(key)}]`)
     return symMap.get(key)
-  }
+  }  
   if (key[REPR]) return key[REPR]
-  return key[REPR] = `[${nextId++}/Function(${key.displayName || key.name})]`
+  return key[REPR] = `[${nextId++}/${kind}(${key.displayName || key.name})]`
 }
 
 const toJson = (val: any) =>

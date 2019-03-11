@@ -47,10 +47,17 @@ export class Stream {
   public push(data: ArrayBuffer | ArrayBufferView) {
     const neededBytes = data.byteLength + this.offset
     if (!this.buffer || this.buffer.byteLength < neededBytes) {
-      // console.log('alloc', neededBytes * 2)
+      console.log('alloc', neededBytes * 2)
       this.allocBuffer(neededBytes * 2)
+    }    
+    this.offset = set(this.buffer, data, this.offset)    
+    console.log('did push', data.byteLength, this.array.buffer.byteLength)
+    if (data instanceof Uint8Array) {
+      this.array.set(data, this.offset)      
+    } else {
+      const buf = ArrayBuffer.isView(data) ? data.buffer : data
+      this.array.set(new Uint8Array(buf), this.offset)
     }
-    this.offset = set(this.buffer, data, this.offset)
   }
 
   public clear() {
