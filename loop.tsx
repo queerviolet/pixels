@@ -48,7 +48,7 @@ export default function Run({
       stats.evaluations += cells.size
       ++stats.batch
       const effects = loop.render()
-      if (stats.batch % 2 === 0) {
+      if (stats.batch % 200 === 0) {
         console.table({delta: statDelta(stats, prev), current: stats, prev})
         prev = {...stats}
       }

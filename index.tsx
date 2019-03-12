@@ -5,6 +5,9 @@ const HEIGHT = 9
 let frame: Box | null = null
 applyLetterbox(WIDTH / HEIGHT, box => frame = box)
 
+let POS: Stream, FORCE: Stream
+const global = window as any
+
 const frameCoordsFrom = ({
   clientX, clientY,
 }) =>
@@ -14,6 +17,8 @@ const frameCoordsFrom = ({
   ]
 
 import Data from 'parcel-plugin-writable/client'
+
+;(window as any).Data = Data
 
 import GL from 'luma.gl/constants'
 import { Matrix4 } from 'math.gl'
@@ -56,7 +61,7 @@ const AllocDataBuffer = ({ _, schema, path }: Output<StreamNode> | any) => {
 
 type Output<T> = { _: (value: T) => void }
 
-const ReadStroke = Evaluate<WithPath & WithData>(
+const ReadStroke = Evaluate<any & WithPath & WithData>(
   function ReadStroke({
     path,
     data = <DataBuffer
@@ -102,11 +107,19 @@ function CopyEventsToStroke({ _, stroke }: any) {
       }
     }
 
+    const pos = new Float32Array(2)
+    const b_pos = new Uint8Array(pos.buffer)
+    const force = new Float32Array(1)
+    const b_force = new Uint8Array(force.buffer)
     function onMouseMove(ev: MouseEvent) {
       stroke({
         pos: frameCoordsFrom(ev),
         pressure: 0.5
       })
+      pos.set(frameCoordsFrom(ev))
+      POS.push(b_pos)
+      force.set([0.5])
+      FORCE.push(b_force)
       _(stroke)
       console.log(ev)
     }
@@ -146,8 +159,12 @@ function ShaderProgram({ _, vs, fs }: any) {
   return null
 }
 
+const Clock = React.createContext(0)
+
 const Draw = Evaluate<any> (
-  function Draw({ program, vertexArray: update, drawMode=GL.POINTS, params }, cell) {
+  function Draw({ program, uniforms, vertexArray: update, drawMode=GL.POINTS, params }, cell) {
+    // const _t = cell.read(Clock).value
+
     const gl = cell.read(GLContext).value
     if (!gl) return
 
@@ -160,13 +177,14 @@ const Draw = Evaluate<any> (
     const vertexCount = vertexArray ? update({ vertexArray }, cell) : 0
     if (!vertexCount) return
 
+    p.setUniforms(uniforms)
+
     const draw = () => p.draw({
       vertexArray,
       vertexCount,
       drawMode,
     })
 
-    console.log('drawing', vertexArray, vertexCount)
     if (params)
       Luma.withParameters(gl, params, draw)
     else
@@ -182,7 +200,6 @@ const readFromStroke = (stroke: any) => ({ vertexArray }, cell) => {
     return 0
   }
 
-  console.log('setting attributes', s.pos.stream.buffer, s.pressure.stream.buffer)
   ;(window as any).s = s
   
   vertexArray.setAttributes({
@@ -209,7 +226,17 @@ const lumaLoop = new Luma.AnimationLoop({
     const loop = createLoop()
     ;(window as any).loop = loop
 
+    POS = new Stream(gl,  {
+      size: 2,
+      type: GL.FLOAT,
+    }, 1024)
+    FORCE = new Stream(gl,  {
+      size: 1,
+      type: GL.FLOAT,
+    }, 1024)
+    Object.assign(global, {POS, FORCE})
     loop(GLContext).write(gl)
+
 
     render(
         <GLContext.Provider value={gl}>
@@ -217,7 +244,17 @@ const lumaLoop = new Luma.AnimationLoop({
             <Print input={<Value value='hi there' />} />
             <Print input={<Value value='hi there' />} />
             <Print input={<Value value='should be only one hello' />} />
+            <ReadStroke path="another-stroke" />
             <Draw
+              uniforms={{
+                uProjection: new Matrix4().ortho({
+                  top: -9,
+                  bottom: 9,
+                  left: -16,
+                  right: 16, 
+                  near: -1, far: 1000
+                })
+              }}              
               params={{
                 [GL.BLEND]: true,
                 // blendColor: [GL.BLEND_COLOR],
@@ -250,7 +287,14 @@ const lumaLoop = new Luma.AnimationLoop({
                   `} />
               }
               vertexArray={
-                readFromStroke(<ReadStroke path="another-stroke" />)
+                // ({ vertexArray }) => {
+                //   vertexArray.setAttributes({
+                //     pos: POS.buffer,
+                //     pressure: FORCE.buffer
+                //   })
+                //   return POS.count
+                // }
+                   readFromStroke(<ReadStroke path="another-stroke" />)
               } />
           </Loop>
         </GLContext.Provider>,
@@ -302,15 +346,20 @@ const lumaLoop = new Luma.AnimationLoop({
     }
   },
 
-  onRender({ gl, loop, program, vertexArray, stroke }) {
+  onRender({ tick, gl, loop, program, vertexArray, stroke }) {
     // gl.clearColor(0.0, 0.0, 0.0, 1.0)
     // gl.clear(GL.COLOR_BUFFER_BIT)
     // if (!stroke.pos.stream.buffer) return
     // if (!stroke.pressure.stream.buffer) return
+    // if (!POS || !POS.array.length) return
     // vertexArray.setAttributes({
-    //   pos: stroke.pos.stream.buffer,
-    //   pressure: stroke.pressure.stream.buffer,
+    //   // pos: stroke.pos.stream.buffer,
+    //   // pressure: stroke.pressure.stream.buffer,
+    //   pos: POS.buffer,
+    //   pressure: FORCE.buffer,
     // })
+
+    loop(Clock).write(tick)
 
     // const uProjection = new Matrix4().ortho({
     //   top: -9,
@@ -334,7 +383,7 @@ const lumaLoop = new Luma.AnimationLoop({
     //   // blendEquation: GL.FUNC_ADD
     // }, () => program.draw({
     //   vertexArray,
-    //   vertexCount: stroke.pos.stream.count,
+    //   vertexCount: POS.count,//stroke.pos.stream.count,
     //   drawMode: GL.POINTS,     
     // }))
 

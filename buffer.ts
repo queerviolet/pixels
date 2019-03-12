@@ -48,10 +48,11 @@ export class Stream {
     const neededBytes = data.byteLength + this.offset
     if (!this.buffer || this.buffer.byteLength < neededBytes) {
       console.log('alloc', neededBytes * 2)
-      this.allocBuffer(neededBytes * 2)
+      this.allocBuffer(neededBytes * 4)
+      console.log('this.buffer.byteLength=', this.buffer.byteLength)
     }    
     this.offset = set(this.buffer, data, this.offset)    
-    console.log('did push', data.byteLength, this.array.buffer.byteLength)
+    console.log('did push', data.byteLength, ' bytes into ', this.array.buffer.byteLength)
     if (data instanceof Uint8Array) {
       this.array.set(data, this.offset)      
     } else {
@@ -80,7 +81,8 @@ export class Stream {
 
 function concatArrays(byteLength: number, ...srcs: Uint8Array[]) {
   byteLength = Math.max(byteLength, srcs.reduce((total, s) => total + (s ? s.byteLength : 0), 0))
-  const array = new Uint8Array(byteLength)  
+  const array = new Uint8Array(byteLength)
+  console.log('creating array of size', array.byteLength)
   let offset = 0
   srcs.forEach(s => {
     if (!s) return
