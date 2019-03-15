@@ -20,7 +20,7 @@ interface CellContext {
   (pattern: any): Cell
   onDidEvaluate: Event<Set<Cell>>
   invalidate(cell: Cell): void
-  invalidateAll(cells: Iterable<Cell>): void
+  invalidateAll(cells?: Iterable<Cell>): void
   render(): React.ReactElement[]
   run(): void
 }
@@ -94,8 +94,8 @@ export function createLoop(): CellContext {
     dirty.add(cell)
   }
 
-  function invalidateAll(cells: Iterable<Cell>) {
-    for (const c of cells) dirty.add(c)
+  function invalidateAll(cellsToInvalidate: Iterable<Cell> = cells.values()) {
+    for (const c of cellsToInvalidate) dirty.add(c)
   }
 
   function run() {

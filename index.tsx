@@ -5,7 +5,6 @@ const HEIGHT = 9
 let frame: Box | null = null
 applyLetterbox(WIDTH / HEIGHT, box => frame = box)
 
-let POS: Stream, FORCE: Stream
 const global = window as any
 
 const frameCoordsFrom = ({
@@ -27,8 +26,8 @@ import { sync, StreamNode, Stream } from './buffer'
 
 import { render } from 'react-dom'
 import * as React from 'react'
-import Loop, { Print, Value, Cell, useRead, Evaluate, createLoop, isContext } from './loop'
-import { ReactElement, useRef, useEffect, useContext, MutableRefObject } from 'react';
+import Loop, { Evaluate, createLoop, isContext } from './loop'
+import { ReactElement, useRef, useEffect, useContext } from 'react';
 import { Schema } from 'var:*';
 
 const GLContext = React.createContext(null)
@@ -49,11 +48,13 @@ const AllocDataBuffer = ({ _, schema, path }: Output<StreamNode> | any) => {
     if (!gl) return
     const keys = Object.keys(schema)
     const out = {}
+    let buf = null
     let i = keys.length; while (i --> 0) {
       const k = keys[i]
-      out[k] = sync(gl, schema[k])
+      out[k] = sync(gl, schema[k], () => _(buf))
     }
-    _(Data(path)(out))
+    buf = Data(path)(out)
+    _(buf)
     return // TODO: Unlisten to the sync action, dispose buffer
   }, [gl, schema, path])
   return null
@@ -104,24 +105,16 @@ function CopyEventsToStroke({ _, stroke }: any) {
           pos: frameCoordsFrom(touch),
           pressure: touch.force,
         })
+        _(stroke)
       }
     }
 
-    const pos = new Float32Array(2)
-    const b_pos = new Uint8Array(pos.buffer)
-    const force = new Float32Array(1)
-    const b_force = new Uint8Array(force.buffer)
     function onMouseMove(ev: MouseEvent) {
       stroke({
         pos: frameCoordsFrom(ev),
         pressure: 0.5
       })
-      pos.set(frameCoordsFrom(ev))
-      POS.push(b_pos)
-      force.set([0.5])
-      FORCE.push(b_force)
       _(stroke)
-      console.log(ev)
     }
 
     return () => {
@@ -226,25 +219,11 @@ const lumaLoop = new Luma.AnimationLoop({
     const loop = createLoop()
     ;(window as any).loop = loop
 
-    POS = new Stream(gl,  {
-      size: 2,
-      type: GL.FLOAT,
-    }, 1024)
-    FORCE = new Stream(gl,  {
-      size: 1,
-      type: GL.FLOAT,
-    }, 1024)
-    Object.assign(global, {POS, FORCE})
     loop(GLContext).write(gl)
-
 
     render(
         <GLContext.Provider value={gl}>
           <Loop loop={loop}>
-            <Print input={<Value value='hi there' />} />
-            <Print input={<Value value='hi there' />} />
-            <Print input={<Value value='should be only one hello' />} />
-            <ReadStroke path="another-stroke" />
             <Draw
               uniforms={{
                 uProjection: new Matrix4().ortho({
@@ -286,107 +265,22 @@ const lumaLoop = new Luma.AnimationLoop({
                     }
                   `} />
               }
-              vertexArray={
-                // ({ vertexArray }) => {
-                //   vertexArray.setAttributes({
-                //     pos: POS.buffer,
-                //     pressure: FORCE.buffer
-                //   })
-                //   return POS.count
-                // }
-                   readFromStroke(<ReadStroke path="another-stroke" />)
-              } />
+              vertexArray={readFromStroke(<ReadStroke path="another-stroke" />)} />
           </Loop>
         </GLContext.Provider>,
       document.getElementById('main'))
 
-    const stroke = Data('stroke')({
-      pos: sync(gl, {
-        size: 2,
-        type: GL.FLOAT,
-      }),
-      pressure: sync(gl, {
-        size: 1,
-        type: GL.FLOAT
-      }),
-    })
-    ;(window as any).stroke = stroke
-
-    const program = new Luma.Program(gl, {
-      vs: `
-        attribute vec2 pos;
-        attribute float pressure;
-        uniform mat4 uProjection;
-        varying float vPressure;
-
-        void main() {
-          gl_Position = uProjection * vec4(pos.x, pos.y, 0.0, 1.0);
-          gl_PointSize = 5.0 * pressure * 7.0;
-          vPressure = pressure;
-        }
-      `,
-      fs: `
-        precision highp float;
-        varying float vPressure;
-
-        void main() {
-          gl_FragColor = vec4(1.0, 0.0, 1.0, vPressure);
-        }
-      `,
-    })
-
     canvas.style = ''
-    const vertexArray = new Luma.VertexArray(gl, { program });
     
     return {
-      program,  
-      stroke,
-      vertexArray, 
       loop     
     }
   },
 
-  onRender({ tick, gl, loop, program, vertexArray, stroke }) {
+  onRender({ tick, loop, }) {
     // gl.clearColor(0.0, 0.0, 0.0, 1.0)
     // gl.clear(GL.COLOR_BUFFER_BIT)
-    // if (!stroke.pos.stream.buffer) return
-    // if (!stroke.pressure.stream.buffer) return
-    // if (!POS || !POS.array.length) return
-    // vertexArray.setAttributes({
-    //   // pos: stroke.pos.stream.buffer,
-    //   // pressure: stroke.pressure.stream.buffer,
-    //   pos: POS.buffer,
-    //   pressure: FORCE.buffer,
-    // })
-
     loop(Clock).write(tick)
-
-    // const uProjection = new Matrix4().ortho({
-    //   top: -9,
-    //   bottom: 9,
-    //   left: -16,
-    //   right: 16, 
-    //   near: -1, far: 1000
-    // })
-
-    // program.setUniforms({
-    //   uProjection
-    // })
-
-    // Luma.withParameters(gl, {
-    //   [GL.BLEND]: true,
-    //   // blendColor: [GL.BLEND_COLOR],
-    //   // blendEquation: [GL.FUNC_ADDGL.BLEND_EQUATION_RGB, GL.BLEND_EQUATION_ALPHA],
-    //   // blendFunc: [GL.BLEND_SRC_RGB, GL.BLEND_SRC_ALPHA],
-
-    //   blendFuncPart: [GL.ONE_MINUS_SRC_ALPHA, GL.ZERO, GL.CONSTANT_ALPHA, GL.ZERO],
-    //   // blendEquation: GL.FUNC_ADD
-    // }, () => program.draw({
-    //   vertexArray,
-    //   vertexCount: POS.count,//stroke.pos.stream.count,
-    //   drawMode: GL.POINTS,     
-    // }))
-
     loop.run()
   }
 })

@@ -13,29 +13,6 @@ const url = require('url')
 const Resolver = module.parent.require('../Resolver')
 const chokidar = require('chokidar')
 
-async function createStub(root, path) {
-  const stubFile = resolve(root, '.stub', path + '.ts')
-  await mkdir(dirname(stubFile), { recursive: true })
-  await writeFile(stubFile, `
-import { createNode } from 'parcel-plugin-writable/client'
-export const path = createNode(${JSON.stringify(path)})`)
-  return stubFile
-}
-
-const extendResolve =
-  base => async function(input, parent) {
-    if (!input.startsWith('var:')) return base.call(this, input, parent)
-
-    const { rootDir: root } = this.options
-    input = input.slice('var:'.length)
-    const path = relative(root, resolve(parent, '..', input))
-
-    const stubFile = await createStub(root, path)
-    console.log('Created', stubFile)
-    const out = await base.call(this, relative(dirname(parent), stubFile), parent)
-    return out
-  }
-
 function File(path) {
   const observers = []
   
@@ -93,7 +70,9 @@ function File(path) {
       debug('Read:', path)
       const data = await get()
       observers.forEach(o => {
+        debug('Truncating', path)        
         o.send('truncate')
+        debug('Data for', path, data.byteLength, 'bytes')
         o.send(data)
       })
     }
@@ -147,6 +126,4 @@ module.exports = bundler => {
       dispose()
     }
   })
-
-  Resolver.prototype.resolve = extendResolve(Resolver.prototype.resolve)
 }

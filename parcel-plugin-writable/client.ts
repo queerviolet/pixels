@@ -147,6 +147,7 @@ class Client {
   }
 
   private emit(data: any) {
+    console.log('->', data, 'to', this.observers.length, 'observers')
     this.observers.forEach(o => o.next(data))
   }
 

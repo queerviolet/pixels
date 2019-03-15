@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "moduleResolution": "node",
+    "module": "commonjs",
+    "jsx": "react",
+    "baseUrl": ".",
+    "rootDir": "./src",
+    "outDir": "./dist"
+  }
+}
