@@ -81,6 +81,8 @@ function File(path) {
 
 const varFile = (root, path) => join(root, '.var', path)
 
+const DataServer = require('./dist/server')
+
 module.exports = bundler => {
   const watcher = chokidar.watch()
   const files = {}
@@ -97,7 +99,13 @@ module.exports = bundler => {
   watcher.on('change', fileChanged)
   watcher.on('unlink', fileChanged)
 
+  DataServer({
+    server: bundler.server,
+    dataDir: join(bundler.options.rootDir, '.var'),
+  })
+
   const wss = new Server({ noServer: true })
+
 
   bundler.server.on('upgrade', (request, socket, head) => {
     const { pathname } = url.parse(request.url)
@@ -108,6 +116,17 @@ module.exports = bundler => {
         wss.emit('connection', ws, request)
       })
     }
+
+    const { pathname } = url.parse(request.url)
+    if (pathname.startsWith('/__data__/')) {
+      wsServer.handleUpgrade(request, socket, head, ws => {
+        wsServer.emit('connection', ws, request)
+      })
+    }
+  })
+
+  wsServer.on('connection', (ws, request) => {
+
   })
   
   wss.on('connection', (ws, request) => {

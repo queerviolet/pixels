@@ -5,7 +5,7 @@
   "main": "index.js",
   "browserslist": "last 2 Chrome versions",
   "scripts": {
-    "start": "DEBUG=writable parcel index.html",
+    "start": "parcel index.html",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

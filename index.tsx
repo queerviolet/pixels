@@ -19,6 +19,13 @@ import Data from 'parcel-plugin-writable/client'
 
 ;(window as any).Data = Data
 
+import Node from 'parcel-plugin-writable/src/node'
+import { vec2, float } from 'parcel-plugin-writable/src/struct'
+global.stroke = Node('/stroke', {
+  pos: vec2,
+  force: float,
+})
+
 import GL from 'luma.gl/constants'
 import { Matrix4 } from 'math.gl'
 import * as Luma from 'luma.gl'
@@ -294,3 +301,17 @@ hot(module).onDispose(() => {
   const { canvas } = lumaLoop.gl
   canvas && canvas.parentNode.removeChild(canvas)
 })
+
+
+// type $<T> = { __$Pattern__: 'Is a pattern', __$Pattern_Type__: T }
+
+// interface Evaluator<Input, Output> {
+//   (input: Input): $<Output>
+//   (input: Input, cell: any): Output  
+// }
+
+// function Eval<I, O>(evaluate: (input: I) => O): Evaluator<I, O> => {
+
+// }
+
+// new Node('stroke').field('pos').shape(vec2)

@@ -1,37 +1,58 @@
-export type vec2_f32 = { type: 'vec2_f32' }
-export type float32 = { type: 'f32' }
+export type Field<Type=string, Data=any> = Descriptor<Type> & Accessor<Data>
+
+export type Descriptor<T=dtype["type"]> = {
+  type: T
+  byteLength: number
+  component: {
+    byteLength: number
+    count: number
+  }
+  path?: string[]
+  byteOffset?: number
+}
+
+export type vec2_f32 = Field<'vec2', Float32Array>
+export type float32 = Field<'float', number>
 
 export type dtype = float32 | vec2_f32
+
+const Contexts = Symbol('Context values for this object')
 
 const Frame_current = Symbol('Current frame')
 const Frame_buffer = Symbol('Buffer for the current frame')
 const Frame_view = Symbol('Data view for current frame')
 const Frame_byteOffset = Symbol('Byte offset for current frame')
 
+export type Accessor<T> = {
+  readonly value: T
+  set(value: T): void
+}
 const Accessor = Symbol('Accessor for shape')
-const Field_byteOffset = Symbol('Byte offset for field')
-const Field_path = Symbol('Path to field')
 
 const dtype = Symbol('dtype')
 const size = Symbol('size')
-const componentSize = Symbol('Size of a component in a vec or mat')
 
 export const float32: float32 = {
-  type: 'f32',
+  type: 'float',
+  byteLength: 32 / 8,
+  component: {
+    byteLength: 32 / 8,
+    count: 1,
+  },
   [size]: 32 / 8,
   get value() {
     const {
-      [Frame_current]: frame=this,
-      [Field_byteOffset]: fieldOffset=0
+      byteOffset: fieldOffset=0
     } = this
+    const frame = getFrame(this)
     return frame[Frame_view].getFloat32(fieldOffset + frame[Frame_byteOffset], true)
   },
 
   set(value: number) {
     const {
-      [Frame_current]: frame=this,
-      [Field_byteOffset]: fieldOffset=0,
+      byteOffset: fieldOffset=0,
     } = this
+    const frame = getFrame(this)
     frame[Frame_view].setFloat32(fieldOffset + frame[Frame_byteOffset], value, true)
   },
 } as float32
@@ -41,13 +62,17 @@ export const float = float32
 
 export const vec2_f32: vec2_f32 = {
   type: 'vec2_f32',
+  byteLength: 2 * 32 / 8,
   [size]: 2 * 32 / 8,
-  [componentSize]: 32 / 8,
+  component: {
+    byteLength: 32 / 8,
+    count: 2,
+  },
   get value() {
     const {
-      [Frame_current]: frame=this,
-      [Field_byteOffset]: fieldOffset=0
-    } = this    
+      byteOffset: fieldOffset=0
+    } = this
+    const frame = getFrame(this)
     return new Float32Array(
       frame[Frame_buffer],
       frame[Frame_byteOffset] + fieldOffset, this[size] / Float32Array.BYTES_PER_ELEMENT)
@@ -55,16 +80,18 @@ export const vec2_f32: vec2_f32 = {
 
   set(x: number | number[], y?: number) {
     const {
-      [Frame_current]: frame=this,
-      [Field_byteOffset]: fieldOffset=0,
+      byteOffset: fieldOffset=0,
+      component,
     } = this
+    const frame = getFrame(this)
+    const view: DataView = frame[Frame_view]
     if (typeof x !== 'number') { [x, y] = x }
     const offset = fieldOffset + frame[Frame_byteOffset]
-    frame[Frame_view].setFloat32(offset, x, true)
+    view.setFloat32(offset, x, true)
     typeof y !== 'undefined' &&
-      frame[Frame_view].setFloat32(offset + vec2[componentSize], y, true)
+      view.setFloat32(offset + component.byteLength, y, true)
   },
-} as vec2_f32
+} as any as vec2_f32
 vec2_f32[dtype] = vec2_f32
 vec2_f32[Accessor] = vec2_f32
 
@@ -99,17 +126,42 @@ export function view<S extends Shape>(shape: S): View<S> & Frame {
 }
 
 /**
+ * Contexts are passed down implicitly from the root of a structure
+ * towards its leaves. For instance, information about the currently
+ * bound buffer and the offset of the current struct within it is
+ * passed through the `Frame_current` context. 
+ */
+
+/**
+ * Return the value for context `id` in object `d`.
+ */
+export const getContext = (d: any, id: symbol) =>
+  d[Contexts] && d[Contexts][id]
+
+/**
+ * Set the value for context `id` in object `d`.
+ */
+export const setContext = <T>(d: T, id: symbol, value: any): T => {
+  d[Contexts] = d[Contexts] || {}
+  d[Contexts][id] = value
+  return d
+}
+
+/**
  * Return true iff d is bound to a frame, allowing reads
  * and writes to succeed.
  */
-export const hasFrame = (d: any) => !!d[Frame_current]
+export const hasFrame = (d: any) => !!getFrame(d)
+export const getFrame = (d: any) => getContext(d, Frame_current)
+
+Object.assign(window as any, { getContext, setContext })
 
 const getAccessor = (shape: any) =>
   shape [Accessor] ? shape [Accessor] : struct(shape)[Accessor]
 
 export function struct<S extends Shape>(shape: S): View<S> {
   const layout = getLayout(shape)
-  const { map } = layout
+  const { map } = layout  
   const base = frameForwarder(map)
   base[size] = layout.byteLength
   shape[Accessor] = base
@@ -117,7 +169,7 @@ export function struct<S extends Shape>(shape: S): View<S> {
   return base as View<S>
 }
 
-function frameForwarder(map: any, base={}) {
+function frameForwarder(map: any, base=establishContext()) {
   for (const field of Object.keys(map)) {
     let descriptor = null
     Object.defineProperty(base, field, {
@@ -126,21 +178,26 @@ function frameForwarder(map: any, base={}) {
         if (!isDType(map[field]))
           descriptor = frameForwarder(map[field])
         else
-          descriptor = Object.create(map[field])
-        establishFrame(descriptor, this[Frame_current])
+          descriptor = Object.create(map[field])          
+        descriptor[Contexts] = Object.create(this[Contexts])
         return descriptor
       },
 
       set(value: any) {
         this[field].set(value)
-      }      
+      }
     })
   }
   return base
 }
 
+export function establishContext(o: any={}) {
+  o[Contexts] = o[Contexts] || {}
+  return o
+}
+
 export function establishFrame(o: any, frame=o) {
-  o[Frame_current] = frame
+  setContext(o, Frame_current, frame)
   return o
 }
 
@@ -166,28 +223,51 @@ export function sizeof(shape: Shape): number {
   return getAccessor(shape)[size]  
 }
 
-export function getLayout(shape: Shape, layout=new Layout, path: string[]=[]) {
+const cachedLayout = Symbol('Cached root layout for this Shape')
+;(window as any).getLayout = getLayout
+export function getLayout(shape: Shape, layout?: Layout, path: string[]=[]): Layout {
+  if (!path.length && shape[cachedLayout]) {
+    console.log('returning cached layout', shape[cachedLayout], 'for', shape)
+    return shape[cachedLayout]
+  }
+  if (!layout) layout = new Layout()
   if (isDType(shape)) {
     return layout.push(shape, path)
   }
   for (const field of Object.keys(shape)) {
     getLayout(shape[field], layout, [...path, field])
   }
+  if (!path.length) {
+    console.log('setting cached layout')
+    ;(shape as any)[cachedLayout] = layout
+  }
   return layout
 }
 
-export type Field = { __atom__: 'Field' }
+const DTYPE = { vec2, float }
+type DTYPE<T extends string> =
+  T extends 'vec2' ? vec2_f32
+  : T extends 'float' ? float32
+  : any
+
+export function parseField<
+  Type extends dtype['type'] = dtype['type'],
+  D extends Descriptor<Type> = Descriptor<Type>,
+  Data=DTYPE<Type>,
+  >(descriptor: D): Field<Type, Data> & D {
+  return Object.assign(Object.create(DTYPE[descriptor.type]), descriptor)
+}
 
 export class Layout {
   public readonly fields: (Field & dtype)[] = []
   public byteLength: number = 0
   public map: any = {}
 
-  push(type: dtype, path: string[] = []) {
+  push(type: dtype, path: string[] = []): Layout {
     const sz = sizeof(type)
     const field = Object.create(type)
-    field [Field_path] = path
-    field [Field_byteOffset] = this.byteLength
+    field.path = path
+    field.byteOffset = this.byteLength
     this.fields.push(field)
     this.byteLength += sz
 
@@ -211,22 +291,19 @@ function mkdir(obj: any, path: string[]) {
   return obj
 }
 
-Object.assign(window as any, {
-  Frame_current,
-  Frame_buffer,
-  Frame_view,
-  Frame_byteOffset,
-  Field: Accessor,
-  Field_byteOffset,
-  Field_path,
-  dtype,
-  size,
-  componentSize,
-  struct,
-  float,
-  vec2,
-  view,
-  setBuffer,
-  setOffset,
-  malloc,
-})
+// Object.assign((window || global) as any, {
+//   Frame_current,
+//   Frame_buffer,
+//   Frame_view,
+//   Frame_byteOffset,
+//   Field: Accessor,
+//   dtype,
+//   size,
+//   struct,
+//   float,
+//   vec2,
+//   view,
+//   setBuffer,
+//   setOffset,
+//   malloc,
+// })
