@@ -38,16 +38,14 @@ export default function Server({ dataDir, server, wsPath='/__data__/' }: ServerO
 
 import createEvent from './event'
 
-let nextId = 0
 const ClientConnection = (ws: any): Connection =>
   createEvent<Message, ConnectionMethods>(emit => {
     ws.on('message', emit)
     return {
-      id: nextId++,
       sendMessage, sendData,
     }
 
-    function sendMessage(msg: Message) {
+    function sendMessage(msg: Message) {      
       ws.send(JSON.stringify(msg))
     }
 

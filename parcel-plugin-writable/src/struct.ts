@@ -105,23 +105,8 @@ export type Shape = Structure | dtype
 
 export const isDType = (s: any): s is dtype => !!s[dtype]
 
-export type View<S extends Shape> =
-  S extends float32
-    ? { readonly value: number, set(value: number): void }
-    :
-  S extends vec2_f32
-    ? { readonly value: Float32Array,
-        set([x, y]: number[]): void,
-        set(x: number, y: number): void
-      }
-    :
-  S extends Structure
-    ? {
-      [field in keyof S]: View<S['field']>
-    }
-    : void
 
-export function view<S extends Shape>(shape: S): View<S> & Frame {
+export function view<S extends Shape>(shape: S): S & Frame {
   return establishFrame(Object.create(getAccessor(shape)))
 }
 
@@ -141,10 +126,10 @@ export const getContext = (d: any, id: symbol) =>
 /**
  * Set the value for context `id` in object `d`.
  */
-export const setContext = <T>(d: T, id: symbol, value: any): T => {
+export const setContext = <T, C={}>(d: T, id: symbol, value: any): T & C => {
   d[Contexts] = d[Contexts] || {}
   d[Contexts][id] = value
-  return d
+  return d as T & C
 }
 
 /**
@@ -154,22 +139,20 @@ export const setContext = <T>(d: T, id: symbol, value: any): T => {
 export const hasFrame = (d: any) => !!getFrame(d)
 export const getFrame = (d: any) => getContext(d, Frame_current)
 
-Object.assign(window as any, { getContext, setContext })
-
 const getAccessor = (shape: any) =>
   shape [Accessor] ? shape [Accessor] : struct(shape)[Accessor]
 
-export function struct<S extends Shape>(shape: S): View<S> {
+export function struct<S extends Shape>(shape: S): S {
   const layout = getLayout(shape)
   const { map } = layout  
   const base = frameForwarder(map)
   base[size] = layout.byteLength
   shape[Accessor] = base
   base[Accessor] = base
-  return base as View<S>
+  return base
 }
 
-function frameForwarder(map: any, base=establishContext()) {
+function frameForwarder<S extends Shape>(map: S, base=establishContext<S>()): S {
   for (const field of Object.keys(map)) {
     let descriptor = null
     Object.defineProperty(base, field, {
@@ -191,27 +174,30 @@ function frameForwarder(map: any, base=establishContext()) {
   return base
 }
 
-export function establishContext(o: any={}) {
+export function establishContext<T>(o: T={} as T): T {
   o[Contexts] = o[Contexts] || {}
   return o
 }
 
-export function establishFrame(o: any, frame=o) {
-  setContext(o, Frame_current, frame)
-  return o
+export function establishFrame<T>(o: T, frame=o): T & Frame {
+  return setContext<T, Frame>(o, Frame_current, frame)
 }
 
-interface Frame { __$Frame__ : 'Established frame' }
+export interface Frame { __$Frame__ : 'Established frame' }
 
-export function malloc<S extends Shape>(shape: S, count=1): Frame & View<S> {
+export function malloc<S extends Shape>(shape: S, count=1): S & Frame {
   const buf = new ArrayBuffer(sizeof(shape) * count)
-  return setOffset(setBuffer(view(shape), buf), 0) as Frame & View<S>
+  return setOffset(setBuffer(view(shape), buf), 0) as S & Frame
 }
 
 export function setBuffer(frame: Frame, buffer: ArrayBuffer) {
   frame [Frame_buffer] = buffer
   frame [Frame_view] = new DataView(buffer, 0)
   return frame
+}
+
+export function getBuffer(frame: Frame): ArrayBuffer {
+  return frame [Frame_buffer]
 }
 
 export function setOffset(frame: Frame, byteOffset: number) {
@@ -224,8 +210,7 @@ export function sizeof(shape: Shape): number {
 }
 
 const cachedLayout = Symbol('Cached root layout for this Shape')
-;(window as any).getLayout = getLayout
-export function getLayout(shape: Shape, layout?: Layout, path: string[]=[]): Layout {
+export function getLayout<S extends Shape>(shape: S, layout?: Layout<S>, path: string[]=[]): Layout<S> {
   if (!path.length && shape[cachedLayout]) {
     console.log('returning cached layout', shape[cachedLayout], 'for', shape)
     return shape[cachedLayout]
@@ -258,12 +243,12 @@ export function parseField<
   return Object.assign(Object.create(DTYPE[descriptor.type]), descriptor)
 }
 
-export class Layout {
+export class Layout<S extends Shape={}> {
   public readonly fields: (Field & dtype)[] = []
   public byteLength: number = 0
-  public map: any = {}
+  public map: S = {} as S
 
-  push(type: dtype, path: string[] = []): Layout {
+  push(type: dtype, path: string[] = []): Layout<S> {
     const sz = sizeof(type)
     const field = Object.create(type)
     field.path = path

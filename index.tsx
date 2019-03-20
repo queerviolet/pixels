@@ -19,12 +19,14 @@ import Data from 'parcel-plugin-writable/client'
 
 ;(window as any).Data = Data
 
-import Node from 'parcel-plugin-writable/src/node'
-import { vec2, float } from 'parcel-plugin-writable/src/struct'
-global.stroke = Node('/stroke', {
+import Node, { write } from 'parcel-plugin-writable/src/node'
+import { vec2, float, malloc, view } from 'parcel-plugin-writable/src/struct'
+global.stroke = Node('/stroke', malloc(view({
   pos: vec2,
   force: float,
-})
+})))
+global.write = write
+
 
 import GL from 'luma.gl/constants'
 import { Matrix4 } from 'math.gl'
@@ -196,7 +198,6 @@ const Draw = Evaluate<any> (
 const readFromStroke = (stroke: any) => ({ vertexArray }, cell) => {
   const s = cell.read(stroke).value
   if (!s || !vertexArray || !s.pos.stream.buffer || !s.pressure.stream.buffer) {
-    console.log(vertexArray)
     return 0
   }
 
