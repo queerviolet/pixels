@@ -21,7 +21,7 @@ export const getNodePath = (obj: any): string =>
 
 export function write<S extends Shape>(node: S & Node) {
   const dataMsg = getDataMessage(node)
-  defaultClient.send(dataMsg, getBuffer(node))
+  defaultClient.emit(dataMsg, getBuffer(node))
 }
 
 const dataMsg = Symbol('Stored data message for node')
