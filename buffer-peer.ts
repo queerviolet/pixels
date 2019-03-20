@@ -1,7 +1,7 @@
 const debug = require('debug')('buffer-peer')
 import createEvent, { Event, Emitter } from './parcel-plugin-writable/src/event'
 import { PeerMessage, PeerMethods, Data } from 'parcel-plugin-writable/src/peer'
-import { Descriptor, establishFrame, setBuffer } from 'parcel-plugin-writable/src/struct'
+import { Descriptor, establishFrame, setBuffer, getFrame } from 'parcel-plugin-writable/src/struct'
 import { Message, Location } from './parcel-plugin-writable/src/message'
 import { Stream } from './buffer'
 import { append } from 'parcel-plugin-writable/client';
@@ -10,7 +10,7 @@ import { getNodePath } from 'parcel-plugin-writable/src/node';
 
 
 type DataBuffers<B> = PeerMethods & {
-  get(node: Node & Descriptor): Event<B>
+  onChange: Event<B>
 }
 
 interface BufferOps<B> {
@@ -19,78 +19,81 @@ interface BufferOps<B> {
   clear(buffer: B): void
 }
 
-export const createBufferPeer = <B>({ alloc, append, clear }: BufferOps<B>) =>
-  createEvent<PeerMessage, DataBuffers<B>>(
+function pathOf(node: Node & Descriptor) {
+  const nodePath = getNodePath(node)
+  const path = join(nodePath, node.path.join('.'))
+  return path
+}
+
+function filePathFromLocation(location: Location): string | null {
+  console.log('location=', location)
+  return join(location.node, location.path.join('.'))
+}
+
+export const createBufferPeer = <B>(field: Node & Descriptor, { alloc, append, clear }: BufferOps<B>) => {
+  const fieldPath = pathOf(field)
+  let didChange
+  const onChange = createEvent<B>(emit => { didChange = emit })
+  const buffer = alloc(field)
+
+  return createEvent<PeerMessage, DataBuffers<B>>(
     (emit, self) => {
-      const streams: { [path: string]: B } = {}
-      const events: { [path: string]: Event<B> } = {}
-      const emitters: { [path: string]: Emitter<B> } = {}
-
-      return { get, send }
-
-      function get(field: Node & Descriptor): Event<B> {
-        const path = pathOf(field)
-        const buffer = bufferFor(path)
-        if (!events[path]) {
-          events[path] = createEvent<B>(emit => { emitters[path] = emit })          
-          emit({
-            from: self,
-            message: {
-              type: 'read?',
-              node: getNodePath(field),
-              path: field.path
-            }
-          })
+      setTimeout(() => {
+        const msg: PeerMessage = {
+          from: self,
+          message: {
+            type: 'read?',
+            node: getNodePath(field),
+            path: field.path
+          }
         }
-        return events[path]
-      }
+        console.log('emit read', msg)
+        emit(msg)
+      }, 10)
 
-      function pathOf(node: Node & Descriptor) {
-        const nodePath = getNodePath(node)
-        const path = join(nodePath, node.path.join('.'))
-        return path
-      }
-
-      function bufferFor(path: string): B {
-        console.log('lookup buffer for', path)
-        if (!streams[path]) {
-          streams[path] = alloc(node)                  
-        }
-        return streams[path]
-      }
-
+      return { send, onChange }
+    
       function send(msg: Message, data?: Data) {
         debug('Buffer peer received:', msg, data)
         if (msg.type === 'data...') {
           const { layout } = msg
-          const frame = establishFrame()
-          setBuffer(frame, ArrayBuffer.isView(data) ? data.buffer : data)
           let i = layout.length; while (i --> 0) {
-            const l = layout[i]
-            const path = filePathFromLocation(l)
-            if (!path) {
-              console.error('Invalid location:', l)
-              continue
-            }
-            establishFrame(l, frame)
-            append(bufferFor(l), l.array)
-          }
+            const desc = layout[i]
+            const path = filePathFromLocation(desc)
+            if (path !== fieldPath) continue
+            append(buffer,
+              desc.read(ArrayBuffer.isView(data) ? data.buffer : data))
+            didChange(buffer)
+          }          
+        }
+        if (msg.type === 'truncate.') {
+          clear(buffer)
+          didChange(buffer)
         }
       }
+    }
+  )
+}
 
-      function filePathFromLocation(location: Location): string | null {
-        return join(location.node, location.path.join('.'))
-      }
-    })
+import GL from 'luma.gl/constants'
 
-export const createVertexArrayPeer = (gl: any) =>
-  createBufferPeer<Stream>({
-    alloc(node: Node & Descriptor) {
+export const vertexArrayBuffer = (gl: any, field: Node & Descriptor) => {
+  const ops: BufferOps<Stream> = {
+    alloc(column: Descriptor) {
       return new Stream(gl, {
-        size: node.component.count,
         type: GL.FLOAT,
+        size: column.component.count
       })
     },
 
-    append(buffer: )
-  })
+    append(stream: Stream, data: ArrayBufferView) {
+      console.log('pushing', data, 'to', stream)
+      stream.push(data)
+    },
+
+    clear(stream: Stream) {
+      stream.clear()  
+    }
+  }
+  return createBufferPeer<Stream>(field, ops)
+}

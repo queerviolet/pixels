@@ -8,12 +8,16 @@ export default function Hub() {
 
   return add
 
-  function add(peer: Peer): Unsubscribe {
+  function add(peer: Peer, note?: string): Unsubscribe {
+    console.log('Add peer', '(', note, ')', peers.length, 'peers')
     peers.push(peer)
     const unsubscribe = peer(msg => {
+      console.log('****message', msg)
       let i = peers.length; while (i --> 0) {
         if (peers[i] !== msg.from)
           peers[i].send(msg.message, msg.data)
+        else
+          console.log('Skipping peer', peer)
       }
     })
     

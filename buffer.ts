@@ -49,11 +49,12 @@ export class Stream {
   }
 
   public push(data: ArrayBuffer | ArrayBufferView) {
+    console.log(this, 'PUSH', data)
     const neededBytes = data.byteLength + this.offset
     if (!this.buffer || this.buffer.byteLength < neededBytes || !this.array || this.array.byteLength < neededBytes) {
-      // console.log('alloc', neededBytes * 2)
+      console.log('alloc', neededBytes * 2)
       this.allocBuffer(neededBytes * 2)
-      // console.log('this.buffer.byteLength=', this.buffer.byteLength)
+      console.log('this.buffer.byteLength=', this.buffer.byteLength)
     }    
     const newOffset = set(this.buffer, data, this.offset)    
     if (data instanceof Uint8Array) {
@@ -67,6 +68,7 @@ export class Stream {
     }
     // console.log('did push', data.byteLength, ' bytes into ', this.array.byteLength, 'offset:', this.offset)
     // console.log(this.array)
+    console.log(this, 'new offset=', newOffset, 'count=', this.count)
     this.offset = newOffset
   }
 

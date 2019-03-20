@@ -1,3 +1,5 @@
+import { read } from "fs";
+
 export type Field<Type=string, Data=any> = Descriptor<Type> & Accessor<Data>
 
 export type Descriptor<T=dtype["type"]> = {
@@ -13,8 +15,9 @@ export type Descriptor<T=dtype["type"]> = {
 
 export type vec2_f32 = Field<'vec2', Float32Array>
 export type float32 = Field<'float', number>
+export type uint8 = Field<'byte', number>
 
-export type dtype = float32 | vec2_f32
+export type dtype = float32 | vec2_f32 | uint8
 
 const Contexts = Symbol('Context values for this object')
 
@@ -27,6 +30,7 @@ export type Accessor<T> = {
   readonly value: T
   readonly array: ArrayBufferView
   set(value: T): void
+  read(buffer: ArrayBuffer, offset?: number): ArrayBufferView
 }
 const Accessor = Symbol('Accessor for shape')
 
@@ -64,7 +68,13 @@ export const float32: float32 = {
     const frame = getFrame(this)
     return new Float32Array(
       frame[Frame_buffer],
-      frame[Frame_byteOffset] + fieldOffset, this[size] / Float32Array.BYTES_PER_ELEMENT)
+      frame[Frame_byteOffset] + fieldOffset, this.byteLength)
+  },
+
+  read(buffer: ArrayBuffer, offset: number = 0) {
+    return new Float32Array(
+      buffer, offset + this.byteOffset, this.byteLength
+    )
   },
 
   toJSON() {
@@ -80,6 +90,62 @@ export const float32: float32 = {
 float32[dtype] = float32
 float32[Accessor] = float32
 export const float = float32
+
+
+export const byte: uint8 = {
+  type: 'byte',
+  byteLength: 1,
+  component: {
+    byteLength: 1,
+    count: 1,
+  },
+  [size]: 1,
+  get value() {
+    const {
+      byteOffset: fieldOffset=0
+    } = this
+    const frame = getFrame(this)
+    return frame[Frame_view].getUint8(fieldOffset + frame[Frame_byteOffset], true)
+  },
+
+  set(value: number) {
+    const {
+      byteOffset: fieldOffset=0,
+    } = this
+    const frame = getFrame(this)
+    frame[Frame_view].setUint8(fieldOffset + frame[Frame_byteOffset], value, true)
+  },
+
+  get array() {
+    const {
+      byteOffset: fieldOffset=0
+    } = this
+    const frame = getFrame(this)
+    console.log('this=', this, 'FRAME=', frame)
+    return new Uint8Array(
+      frame[Frame_buffer],
+      frame[Frame_byteOffset] + fieldOffset, this[size])
+  },
+
+  read(buffer: ArrayBuffer, offset: number = 0) {
+    return new Uint8Array(
+      buffer, offset + this.byteOffset, this.byteLength
+    )
+  },
+
+  toJSON() {
+    return {
+      type: 'byte',
+      path: this.path,
+      byteOffset: this.byteOffset,
+      byteLength: this.byteLength,
+      component: byte.component,
+    }
+  }
+} as uint8
+byte[dtype] = byte
+byte[Accessor] = byte
+
 
 export const vec2_f32: vec2_f32 = {
   type: 'vec2',
@@ -97,6 +163,13 @@ export const vec2_f32: vec2_f32 = {
     return new Float32Array(
       frame[Frame_buffer],
       frame[Frame_byteOffset] + fieldOffset, this[size] / Float32Array.BYTES_PER_ELEMENT)
+  },
+
+  read(buffer: ArrayBuffer, offset: number = 0) {
+    return new Float32Array(
+      buffer, offset + this.byteOffset,
+      this.byteLength
+    )
   },
 
   get array() {
@@ -278,10 +351,11 @@ export function setLayout(target: any, layout: Layout) {
   target[cachedLayout] = layout
 }
 
-const DTYPE = { vec2, float }
+const DTYPE = { vec2, float, byte }
 type DTYPE<T extends string> =
   T extends 'vec2' ? vec2_f32
   : T extends 'float' ? float32
+  : T extends 'byte' ? uint8
   : any
 
 export function parseField<
@@ -289,7 +363,10 @@ export function parseField<
   D extends Descriptor<Type> = Descriptor<Type>,
   Data=DTYPE<Type>,
   >(descriptor: D): Field<Type, Data> & D {
-  return Object.assign(Object.create(DTYPE[descriptor.type]), descriptor)
+  console.log('parsing', descriptor)
+  const field = Object.assign(Object.create(DTYPE[descriptor.type]), descriptor)
+  console.log('parsed', descriptor, field)
+  return field
 }
 
 export class Layout<S extends Shape={}> {

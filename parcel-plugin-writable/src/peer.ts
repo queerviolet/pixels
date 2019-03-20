@@ -39,7 +39,6 @@ export default (connection: Connection): Peer =>
     return { send, destroy }
     
     function send(message: Message, data?: Data) {
-      console.log('Peer sending', message, data)
       if (message.type === 'data...') {
         if (state !== message) {
           state = message

@@ -5,8 +5,8 @@ import { relative, normalize, resolve, join, dirname, basename } from 'path'
 import { watch } from 'chokidar'
 
 import createEvent from './event'
-import { createWriteStream, WriteStream, mkdirSync } from 'fs';
-import { setBuffer, establishFrame } from './struct';
+import { createWriteStream, WriteStream, mkdirSync, readFile } from 'fs';
+import { byte, setBuffer, establishFrame } from './struct';
 
 interface Options {
   dataDir: string
@@ -28,7 +28,6 @@ export default ({ dataDir='.', tickleProtectionMs = 200 }: Partial<Options>): Pe
     return { send }
 
     function send(msg: Message, data?: Data) {
-      debug('Received:', msg, data)
       if (msg.type === 'data...') {
         const { layout } = msg
         const frame = establishFrame()
@@ -42,12 +41,45 @@ export default ({ dataDir='.', tickleProtectionMs = 200 }: Partial<Options>): Pe
           }
           // TODO: Write through the field descriptor
           establishFrame(l, frame)
+          console.log('l=', l)
           const ary = l.array
           const buf = Buffer.from(ary.buffer.slice(ary.byteOffset, ary.byteLength))        
           writerFor(path).write(buf)
-          console.log('wrote', path, buf.buffer.byteLength, 'bytes')
+          console.log('wrote', path, buf.byteLength, 'bytes')
           lastTouched[path] = Date.now()
         }
+      }
+      if (msg.type === 'read?') {
+        const path = filePathFromLocation(msg)
+        if (!path) {
+          console.error('Invalid location:', msg)
+          return
+        }
+        console.log('Reading', path)
+        readFile(path, (err, data) => {          
+          if (err) {
+            console.error(err)
+            return
+          }
+          console.log('Read', data.byteLength, 'bytes from', path)
+          emit({
+            from: self,
+            message: {
+              type: 'data...' as 'data...',
+              layout: [
+                {
+                  type: 'byte',
+                  node: msg.node,
+                  path: msg.path,
+                  byteOffset: 0,
+                  byteLength: data.byteLength,
+                  component: byte.component, 
+                } as any
+              ]
+            },
+            data
+          })
+        })
       }
     }
 

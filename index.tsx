@@ -15,13 +15,9 @@ const frameCoordsFrom = ({
     2 * HEIGHT * (clientY - frame.top) / frame.height - HEIGHT,
   ]
 
-import Data from 'parcel-plugin-writable/client'
-
-;(window as any).Data = Data
-
-import Node, { write } from 'parcel-plugin-writable/src/node'
-import { vec2, float, malloc, view } from 'parcel-plugin-writable/src/struct'
-const stylus = Node('stylus', {
+import Data, { Node, write } from 'parcel-plugin-writable/src/node'
+import { vec2, float, malloc, view, Descriptor } from 'parcel-plugin-writable/src/struct'
+const stylus = Data('stylus', {
   pos: vec2,
   force: float,
 })
@@ -36,71 +32,47 @@ import { sync, StreamNode, Stream } from './buffer'
 
 import { render } from 'react-dom'
 import * as React from 'react'
-import Loop, { Evaluate, createLoop, isContext } from './loop'
+import Loop, { Eval, createLoop, isContext } from './loop'
 import { ReactElement, useRef, useEffect, useContext } from 'react';
 import { Schema } from 'var:*';
 
 const GLContext = React.createContext(null)
+const DataContext = React.createContext(null)
 
-const DataBuffer = Evaluate <WithPath & WithSchema> (
-  function DataBuffer({ schema, path }, cell) {
-    return cell.effect <StreamNode> (
-      <AllocDataBuffer key='alloc-buffer'
-        path={path}
-        schema={schema} />
-    )
-  }
-)
+// const DataBuffer({ schema, path }: WithPath & WithSchema, cell) {
+//     const gl = cell.read(GLContext).value
+//     return cell.effect('alloc-buffer', _ => {
+//       if (!gl) return
+//       const keys = Object.keys(schema)
+//       const out = {}
+//       let buf = null
+//       let i = keys.length; while (i --> 0) {
+//         const k = keys[i]
+//         out[k] = sync(gl, schema[k], () => _(buf))
+//       }
+//       buf = Data(path)(out)
+//       _(buf)
+//       return // TODO: Unlisten to the sync action, dispose buffer
+//     }, [gl, schema, path])
+//   }
+// )
 
-const AllocDataBuffer = ({ _, schema, path }: Output<StreamNode> | any) => {
-  const gl = useContext(GLContext)
-  useEffect(() => {
-    if (!gl) return
-    const keys = Object.keys(schema)
-    const out = {}
-    let buf = null
-    let i = keys.length; while (i --> 0) {
-      const k = keys[i]
-      out[k] = sync(gl, schema[k], () => _(buf))
-    }
-    buf = Data(path)(out)
-    _(buf)
-    return // TODO: Unlisten to the sync action, dispose buffer
-  }, [gl, schema, path])
-  return null
-}
+function ReadStroke(props: WithPath, cell?: Cell) {
+  if (!cell) return Seed(ReadStroke, props)
+  const { path } = props
+  return cell.effect('listen-and-write', () => {
+    const stroke = Data(path, {
+      pos: vec2,
+      force: float,
+    })
 
-type Output<T> = { _: (value: T) => void }
+    const canvas = document.createElement('div')
+    canvas.style.width = '100%'
+    canvas.style.height = '100%'
+    canvas.style.position = 'fixed'
+    canvas.style.zIndex = '100'
+    document.body.appendChild(canvas)
 
-const ReadStroke = Evaluate<any & WithPath & WithData>(
-  function ReadStroke({
-    path,
-    data = <DataBuffer
-      path={path}
-      schema={{
-        pos: {
-          size: 2,
-          type: GL.FLOAT,
-        },
-        pressure: {
-          size: 1,
-          type: GL.FLOAT
-        }
-      }} />
-  }, cell) {
-    return cell.effect(
-      <CopyEventsToStroke key='copy-events'
-        stroke={cell.read(data).value} />
-    )
-  }
-)
-
-function CopyEventsToStroke({ _, stroke }: any) {
-  const receiver = useRef<HTMLDivElement>()
-
-  useEffect(() => {
-    if (!receiver.current || !stroke) return
-    const canvas = receiver.current 
     canvas.addEventListener('mousemove', onMouseMove)
     canvas.addEventListener('touchstart', onTouch)
     canvas.addEventListener('touchmove', onTouch)
@@ -111,24 +83,16 @@ function CopyEventsToStroke({ _, stroke }: any) {
       t.preventDefault()
       let i = touches.length; while (i --> 0) {
         const touch = touches.item(i)
-        stroke({
+        Object.assign(stroke, {
           pos: frameCoordsFrom(touch),
           pressure: touch.force,
         })
-        _(stroke)
       }
     }
 
-    function onMouseMove(ev: MouseEvent) {
-      stroke({
-        pos: frameCoordsFrom(ev),
-        pressure: 0.5
-      })
-      _(stroke)
-
-      
-      stylus.pos.set(frameCoordsFrom(ev) as any)
-      stylus.force.set(0.5)
+    function onMouseMove(ev: MouseEvent) {  
+      stroke.pos.set(frameCoordsFrom(ev) as any)
+      stroke.force.set(0.5)
       write(stylus)
     }
 
@@ -137,69 +101,30 @@ function CopyEventsToStroke({ _, stroke }: any) {
       canvas.removeEventListener('touchstart', onTouch)
       canvas.removeEventListener('touchmove', onTouch)
       canvas.removeEventListener('touchend', onTouch)
+      document.body.removeChild(canvas)
     }
-  }, [receiver, stroke])
-  
-  return <div ref={receiver} style={{width: '100%', height: '100%'}} />
+  }, [path])
 }
 
+
 type WithPath = { path?: string }
-type WithSchema = { schema: Schema }
-type WithData = { data?: ReactElement }
 type WithShaderSource = { vs: string, fs: string }
-type WithProgram = { program?: ReactElement }
 
-const Shader = Evaluate<WithShaderSource>(
-  function Shader({ vs, fs }, cell) {
-    return cell.effect(
-      <ShaderProgram key='program' vs={vs} fs={fs} />
-    )
-  }
-)
+import { Seed, Cell } from './loop'
 
-function ShaderProgram({ _, vs, fs }: any) {
-  const gl = useContext(GLContext)
-  useEffect(() => {    
+function Shader(props: WithShaderSource, cell?: Cell) {
+  if (!cell) return Seed(Shader, props)
+  const { vs, fs } = props
+  const gl = cell.read(GLContext).value
+  return cell.effect('program', write => {    
+    console.log(vs, fs)
     const program = new Luma.Program(gl, { vs, fs })    
-    _(program)
+    write(program)
     return () => program.delete()
   }, [gl, vs, fs])
-  return null
 }
 
 const Clock = React.createContext(0)
-
-const Draw = Evaluate<any> (
-  function Draw({ program, uniforms, vertexArray: update, drawMode=GL.POINTS, params }, cell) {
-    // const _t = cell.read(Clock).value
-
-    const gl = cell.read(GLContext).value
-    if (!gl) return
-
-    const p = cell.read(program).value
-    if (!p) return
-    const vertexArray = update && cell.effect(
-      <VertexArrayForProgram key='create-vertex-array' program={p} />
-    )
-    if (!vertexArray) return
-    const vertexCount = vertexArray ? update({ vertexArray }, cell) : 0
-    if (!vertexCount) return
-
-    p.setUniforms(uniforms)
-
-    const draw = () => p.draw({
-      vertexArray,
-      vertexCount,
-      drawMode,
-    })
-
-    if (params)
-      Luma.withParameters(gl, params, draw)
-    else
-      draw()
-    return (cell.value || 0) + 1
-  }
-)
 
 const readFromStroke = (stroke: any) => ({ vertexArray }, cell) => {
   const s = cell.read(stroke).value
@@ -216,16 +141,32 @@ const readFromStroke = (stroke: any) => ({ vertexArray }, cell) => {
   return s.pos.stream.count
 }
 
-function VertexArrayForProgram({ _, program }: any) {
-  const gl = useContext(GLContext)
-  useEffect(() => {
-    if (!gl || !program) return
-    const vertexArray = new Luma.VertexArray(gl, { program });
-    _(vertexArray)
-  }, [gl, program])
-  return null
+type WithCol = { col: any }
+
+function VertexArrayBuffer(props: WithCol, cell?: Cell) {
+  if (!cell) return Seed(VertexArrayBuffer, props)
+  const { col } = props
+  const gl = cell.read(GLContext).value
+  const client = cell.read(DataContext).value
+  return cell.effect<Luma.Buffer>('buffer', _ => {
+    const listener = vertexArrayBuffer(gl, col)    
+    const unsubscribe = listener.onChange(stream => {
+      console.log('Did get stream:', stream)
+      _(stream)
+    })
+    const disconnect = client.connect(listener)
+    listener((msg) => console.log('*#*@*msg', msg))
+
+    return stream => {
+      disconnect()
+      unsubscribe()
+      stream && stream.buffer && stream.buffer._deleteHandle()
+    }
+  }, [col])
 }
 
+import { vertexArrayBuffer } from './buffer-peer'
+import defaultClient from './parcel-plugin-writable/src/client'
 
 const lumaLoop = new Luma.AnimationLoop({
   useDevicePixels: true,
@@ -234,52 +175,91 @@ const lumaLoop = new Luma.AnimationLoop({
     ;(window as any).loop = loop
 
     loop(GLContext).write(gl)
+    loop(DataContext).write(defaultClient)
 
     render(
         <GLContext.Provider value={gl}>
           <Loop loop={loop}>
-            <Draw
-              uniforms={{
-                uProjection: new Matrix4().ortho({
-                  top: -9,
-                  bottom: 9,
-                  left: -16,
-                  right: 16, 
-                  near: -1, far: 1000
-                })
-              }}              
-              params={{
-                [GL.BLEND]: true,
-                // blendColor: [GL.BLEND_COLOR],
-                // blendEquation: [GL.FUNC_ADDGL.BLEND_EQUATION_RGB, GL.BLEND_EQUATION_ALPHA],
-                // blendFunc: [GL.BLEND_SRC_RGB, GL.BLEND_SRC_ALPHA],
-          
-                blendFuncPart: [GL.ONE_MINUS_SRC_ALPHA, GL.ZERO, GL.CONSTANT_ALPHA, GL.ZERO],
-              }}
-              program={
-                <Shader
-                  vs={`
-                    attribute vec2 pos;
-                    attribute float pressure;
+            <Eval>{
+              (_, cell) => {
+                const gl = cell.read(GLContext).value
+                if (!gl) return
+                cell.read(ReadStroke({ path: 'stylus' }))
+            
+                const program = cell.read(Shader({
+                  vs: `
+                  attribute vec2 pos;
+                    // attribute float pressure;
                     uniform mat4 uProjection;
                     varying float vPressure;
             
                     void main() {
                       gl_Position = uProjection * vec4(pos.x, pos.y, 0.0, 1.0);
-                      gl_PointSize = 5.0 * pressure * 7.0;
-                      vPressure = pressure;
+                      // gl_PointSize = 5.0 * pressure * 7.0;
+                      gl_PointSize = 1.0;
+                      vPressure = 0.2;//pressure;
                     }
-                  `}
-                  fs={`
+                  `,
+                  fs: `
                     precision highp float;
                     varying float vPressure;
             
                     void main() {
                       gl_FragColor = vec4(1.0, 1.0, 1.0, vPressure);
                     }
-                  `} />
+                  `
+                })).value
+                if (!program) return
+                const vertexArray = cell.effect<Luma.VertexArray>('vertex-array',
+                  _ => {
+                    if (!gl || !program) return
+                    _(new Luma.VertexArray(gl, { program }))
+                    return (va: any) => va && va.delete()
+                  },                  
+                  [gl, program]
+                )
+                if (!vertexArray) return
+
+                const pos = cell.read(VertexArrayBuffer({ col: stylus.pos })).value
+                if (!pos) return
+                console.log('pos=', pos, pos.count)
+              
+                const vertexCount = pos.count
+                if (!vertexCount) return
+
+                vertexArray.setAttributes({
+                  pos: pos.buffer,
+                })
+                console.log('pos.buffer=', pos.buffer,  pos.buffer.byteLength)
+
+                console.log('vertexCount=', vertexCount)
+            
+                program.setUniforms({
+                  uProjection: new Matrix4().ortho({
+                    top: -9,
+                    bottom: 9,
+                    left: -16,
+                    right: 16, 
+                    near: -1, far: 1000
+                  })
+                })
+            
+                const draw = () => program.draw({
+                  vertexArray,
+                  vertexCount,
+                  drawMpde: GL.POINTS,
+                })
+            
+                Luma.withParameters(gl, {
+                  [GL.BLEND]: true,
+                  // blendColor: [GL.BLEND_COLOR],
+                  // blendEquation: [GL.FUNC_ADDGL.BLEND_EQUATION_RGB, GL.BLEND_EQUATION_ALPHA],
+                  // blendFunc: [GL.BLEND_SRC_RGB, GL.BLEND_SRC_ALPHA],
+            
+                  blendFuncPart: [GL.ONE_MINUS_SRC_ALPHA, GL.ZERO, GL.CONSTANT_ALPHA, GL.ZERO],
+                }, draw)
               }
-              vertexArray={readFromStroke(<ReadStroke path="another-stroke" />)} />
+            }</Eval>
           </Loop>
         </GLContext.Provider>,
       document.getElementById('main'))
@@ -305,7 +285,7 @@ lumaLoop.start()
 import hot from './hot'
 hot(module).onDispose(() => {
   lumaLoop.stop()
-  const { canvas } = lumaLoop.gl
+  const { canvas=null } = lumaLoop.gl || {}
   canvas && canvas.parentNode.removeChild(canvas)
 })
 

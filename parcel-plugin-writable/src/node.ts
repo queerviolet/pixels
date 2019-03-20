@@ -8,6 +8,7 @@ export type Node = Frame & { __$Node__: 'A data node' }
 
 export default function <S extends Shape>(path: string='/', shape: S): View<S> & Node {
   const layout = getLayout(shape)
+  layout.fields.forEach(field => { (field as any).node = path })
   establishFrame(shape)
   const s = malloc(shape)
   setContext<S, Node>(s, Node_path, path)
@@ -42,6 +43,6 @@ const getDataMessage = (node: Node) => {
     type: 'data...',
     layout: fields,
   }
-  console.log(JSON.stringify(dMesg))
+  console.log('dmsg=', dMesg)
   return node[dataMsg] = dMesg
 }

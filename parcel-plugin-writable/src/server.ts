@@ -19,20 +19,17 @@ export default function Server({ dataDir, server, wsPath='/__data__/' }: ServerO
   debug('Starting data server...')
   const wss = new WebsocketServer({ noServer: true })
   const connect = Hub()
-  connect(Files({ dataDir }))
+  connect(Files({ dataDir }), 'Filesystem peer')
 
   server.on('upgrade', (request, socket, head) => {
     const { pathname } = parseUrl(request.url)
     if (pathname.startsWith(wsPath)) {
       wss.handleUpgrade(request, socket, head, ws => {
-        wss.emit('connection', ws, request)
+        wss.emit('connection', ws, request)        
+        const unsubscribe = connect(createPeer(ClientConnection(ws)), socket.address())
+        ws.on('close', unsubscribe)
       })
     }
-  })
-
-  wss.on('connection', (ws: EventEmitter, req: Request) => {
-    const unsubscribe = connect(createPeer(ClientConnection(ws)))
-    ws.on('close', unsubscribe)
   })
 }
 

@@ -11,6 +11,7 @@ type ClientMethods = PeerMethods & {
 const Client = (connect: Hub) => createEvent<PeerMessage, ClientMethods>((emit, from) => ({
   send(message: Message, data?: Data) {},
   emit(message: Message, data?: Data) {
+    console.log('Client emit', message, data)
     emit({
       from,
       message,
@@ -20,8 +21,12 @@ const Client = (connect: Hub) => createEvent<PeerMessage, ClientMethods>((emit, 
   connect
 }))
 
-const ServerConnection = (url=`ws://${location.host}/__data__/`): Connection =>
-  createEvent<Message, ConnectionMethods>(emit => {
+type Disconnect = {
+  disconnect(): void
+}
+
+const ServerConnection = (url=`ws://${location.host}/__data__/`) =>
+  createEvent<Message, ConnectionMethods & Disconnect>(emit => {
     let sock: WebSocket = null
     let reconnectWaitMs = 50
     let pending = null
@@ -29,7 +34,13 @@ const ServerConnection = (url=`ws://${location.host}/__data__/`): Connection =>
     connect()
 
     return {
-      sendMessage, sendData,
+      sendMessage, sendData, disconnect
+    }
+
+    function disconnect() {
+      sock.onclose = null
+      sock.close()
+      sock = null
     }
 
     function sendMessage(msg: Message) {
@@ -73,7 +84,8 @@ const ServerConnection = (url=`ws://${location.host}/__data__/`): Connection =>
   })
 
 const connect = createHub()
-connect(createPeer(ServerConnection()))
+const server = (window as any).__Server || ((window as any).__Server = ServerConnection())
+connect(createPeer(server))
 const client = Client(connect)
 connect(client)
   

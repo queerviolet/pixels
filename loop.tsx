@@ -7,21 +7,19 @@ import createEvent, { Event, Emitter } from './event'
 
 const Context = React.createContext<CellContext>(null)
 
-type HasEvaluator = {
-  evaluator: Function
-}
-
 type Pattern = {
-  type: Partial<HasEvaluator> | React.ReactElement['type']
+  evaluator: Evaluator
   props: any
 }
+export const Seed = (evaluator: Evaluator, props: any) => ({
+  evaluator, props
+})
 
 interface CellContext {
-  (pattern: any): Cell
+  (pattern: any, evaluator?: Evaluator): Cell
   onDidEvaluate: Event<Set<Cell>>
   invalidate(cell: Cell): void
   invalidateAll(cells?: Iterable<Cell>): void
-  render(): React.ReactElement[]
   run(): void
 }
 
@@ -30,11 +28,11 @@ const statDelta = (now, prev) => ({
   batch: now.batch - prev.batch,
   evaluations: now.evaluations - prev.evaluations,
 })
+
 export default function Run({
   loop, children
 }: { loop: CellContext, children?: any }) {
   const [ isReady, setIsReady ] = useState<boolean>(false)
-  const [ effects, setEffects ] = useState<React.ReactElement[]>([])
   useEffect(() => {
     if (!loop) {
       throw new Error('loop must be provided to Run')
@@ -47,12 +45,10 @@ export default function Run({
     return loop.onDidEvaluate((cells) => {
       stats.evaluations += cells.size
       ++stats.batch
-      const effects = loop.render()
       if (stats.batch % 200 === 0) {
         console.table({delta: statDelta(stats, prev), current: stats, prev})
         prev = {...stats}
       }
-      setEffects(effects)
     })
   }, [loop])
 
@@ -60,8 +56,19 @@ export default function Run({
 
   return <Context.Provider value={loop}>
     {children}
-    {effects}
   </Context.Provider>
+}
+
+type EvalProps = {
+  id?: string
+  children: Evaluator
+}
+let nextEvalId = 0
+export function Eval({ id=`anonymous/${nextEvalId++}`, children }: EvalProps) {
+  const loop = useContext(Context)
+  loop(id, children).evaluator = children
+  loop(id, children).invalidate()
+  return null
 }
 
 type Cells = Map<string | symbol, Cell>
@@ -73,21 +80,15 @@ export function createLoop(): CellContext {
   let didEvaluate: Emitter<Set<Cell>> | null = null
   const onDidEvaluate = createEvent(emit => { didEvaluate = emit })
 
-  const get: any = (pattern: any) => {
+  const get: any = (pattern: any, evaluator?: Evaluator) => {
     const key = asKey(pattern)
     if (!cells.has(key)) {
-      const cell = new Cell(get, pattern)
+      const cell = new Cell(get, pattern, evaluator)
       cells.set(key, cell)
       invalidate(cell)
       return cell
     }
     return cells.get(key)
-  }
-
-  function render() {
-    return [...cells.values()]
-      .map(c => c.rendition)
-      .filter(Boolean)
   }
 
   function invalidate(cell: Cell) {
@@ -120,7 +121,7 @@ export function createLoop(): CellContext {
 
   return Object.assign(get, {
     onDidEvaluate,
-    cells, dirty, render, invalidate, invalidateAll, run })
+    cells, dirty, invalidate, invalidateAll, run })
 }
 
 class EvaluationError extends Error {
@@ -130,11 +131,11 @@ class EvaluationError extends Error {
 }
 
 
-const withEvaluator: <T>(evaluator: Evaluator, input: T) => T & HasEvaluator =
-  (evaluator, input) => {
-    (input as any).evaluator = evaluator
-    return input as typeof input & HasEvaluator
-  }
+// const withEvaluator: <T>(evaluator: Evaluator, input: T) => T & HasEvaluator =
+//   (evaluator, input) => {
+//     (input as any).evaluator = evaluator
+//     return input as typeof input & HasEvaluator
+//   }
 
 export const useRead = (input: React.ReactElement) => {
   const $ = useContext(Context)
@@ -150,88 +151,90 @@ export const useRead = (input: React.ReactElement) => {
 type Renderer = (cell: Cell) => React.ReactElement
 const None: Renderer = () => null
 
-export const Evaluate: <P>(evaluator: Evaluator, render?: Renderer) => (props: P) => React.ReactElement
-  = (evaluator, render=None) => {
-    const Component = withEvaluator(
-      evaluator,
-      forwardRef((props: any, ref: React.Ref<any>) => {
-        const $ = useContext(Context)
-        const cell = $(<Component {...props} />)
-        React.useImperativeHandle(ref, () => cell, [cell])
-        return render(cell)
-      })
-    )
-    Component.displayName = evaluator.name
-    return Component
-  }
+// export const Evaluate: <P>(evaluator: Evaluator, render?: Renderer) => (props: P) => React.ReactElement
+//   = (evaluator, render=None) => {
+//     const Component = withEvaluator(
+//       evaluator,
+//       forwardRef((props: any, ref: React.Ref<any>) => {
+//         const $ = useContext(Context)
+//         const cell = $(<Component {...props} />)
+//         React.useImperativeHandle(ref, () => cell, [cell])
+//         return render(cell)
+//       })
+//     )
+//     Component.displayName = evaluator.name
+//     return Component
+//   }
 
-interface WithValue { value: any }
-interface WithInput { input: Pattern }
-export const Value = Evaluate<WithValue>(({ value }) => value)
+// interface WithValue { value: any }
+// interface WithInput { input: Pattern }
+// export const Value = Evaluate<WithValue>(({ value }) => value)
 
-export function Print({ input }) {
-  const value = useRead(input).value
-  console.log(input, '->',  value)
-  return value || 'no value'
-}
+// export function Print({ input }) {
+//   const value = useRead(input).value
+//   console.log(input, '->',  value)
+//   return value || 'no value'
+// }
 
 type Evaluator = (inputs: any, cell: Cell) => any
+type Disposer<T> = (value: T) => void
+type Writer<T> = (value: T) => void
+type Effector<T> = (write: Writer<T>, current: T) => Disposer<T> | void
 
 class Effect<T=any> {
   public value: T
+  public _dispose: Disposer<T> | void = null
+  public _deps: any[] = []
 
   constructor(
-    effect: React.ReactElement,
+    public key: string,
     public cell: Cell
-    ) {
-    if (!effect.key)
-      throw new Error('Effects must have keys')
-    this.effect = effect
-  }
+    ) {}
 
   write = (value: T) => {
     this.value = value
     this.cell.invalidate()
   }
 
-  set effect(effect: React.ReactElement) {
-    this.rendition = createRendition<T>(effect, this.cell.key, this.write)
+  update(effector: Effector<T>, deps: any[]=[]) {
+    if (this.needsUpdate(deps)) {
+      this.dispose()
+      this._dispose = effector(this.write, this.value)
+    }
+    this._deps = deps
   }
 
-  get effect() {
-    return this.rendition
+  needsUpdate(params: any[]) {
+    const { _deps } = this
+    if (!_deps.length || !params.length) return true
+    if (_deps.length !== params.length) return true
+    let i = params.length; while (i --> 0) {
+      if (_deps[i] !== params[i]) return true
+    }
+    return false
   }
 
-  public rendition: React.ReactElement
-}
-
-function createRendition<T>(effect: React.ReactElement, cellKey: string,  write: (value: T) => void) {
-  const key = `${cellKey}/${effect.key}`
-  if (effect.type instanceof React.Component || typeof effect.type === 'string') {
-    return React.cloneElement(effect, {key, ref: write})
+  dispose() {
+    if (this._dispose) {
+      this._dispose(this.value)      
+      this._dispose = null
+    }
   }
-  return React.cloneElement(effect, {key, _: write})
 }
 
 const NilEvaluator = (_args, cell) => cell.value
 
 const getEvaluator = (pattern: any): Evaluator =>
-  (pattern && pattern.type && pattern.type.evaluator) || NilEvaluator
+  (pattern && pattern.evaluator) || NilEvaluator
 
 export class Cell {
   constructor(public readonly context: CellContext,
     public readonly pattern: Pattern,
-    public readonly evaluator: Evaluator = getEvaluator(pattern)) { }
+    public evaluator: Evaluator = getEvaluator(pattern)) { }
 
   public readonly key: string = asKey(this.pattern)
   public value: any = null
   public effects: { [key: string]: Effect } = {}
-
-  get rendition(): React.ReactElement[] {
-    const effects = Object.values(this.effects)
-    if (!effects.length) return null
-    return effects.map(e => e.rendition).filter(Boolean)
-  }
 
   public addOutput(cell: Cell) {
     this.outputs[cell.key as string] = cell
@@ -245,15 +248,15 @@ export class Cell {
     return target
   }
 
-  public effect<T>(effect: Effect<T>['effect']): T {
+  public effect<T>(key: string, effector: Effector<T>, deps: any[]): T {
     const { effects } = this
-    const existing = effects[effect.key]
+    const existing = effects[key]
     if (!existing) {
-      effects[effect.key] = new Effect(effect, this)
-    } else {
-      existing.effect = effect
+      effects[key] = new Effect(key, this)
     }
-    return effects[effect.key].value
+    const effect = effects[key]
+    effect.update(effector, deps)
+    return effect.value
   }
 
   public invalidate() {
