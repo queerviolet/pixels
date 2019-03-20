@@ -132,15 +132,20 @@ vec2_f32[Accessor] = vec2_f32
 export const vec2 = vec2_f32
 
 export interface Structure {
-  readonly [field: string]: Shape
+  [field: string]: Shape
 }
 
 export type Shape = Structure | dtype
 
 export const isDType = (s: any): s is dtype => !!s[dtype]
 
+export type View<S> = S extends Descriptor
+  ? S
+  : {
+    [k in keyof S]: View<S[k]> & number
+  }
 
-export function view<S extends Shape>(shape: S): S & Frame {
+export function view<S extends Shape>(shape: S): View<S> & Frame {
   return establishFrame(Object.create(getAccessor(shape)))
 }
 

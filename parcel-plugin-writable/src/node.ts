@@ -1,18 +1,18 @@
 const Node_path = Symbol('Context: Path to data node')
 
-import { Shape, Frame, setLayout, getContext, getBuffer, setContext, hasFrame, malloc, getLayout, establishFrame } from './struct'
+import { Shape, Frame, setLayout, getContext, getBuffer, setContext, hasFrame, malloc, getLayout, establishFrame, View } from './struct'
 import defaultClient from './client'
 import { DataMessage } from './message';
 
 export type Node = Frame & { __$Node__: 'A data node' }
 
-export default function <S extends Shape>(path: string='/', shape: S): S & Node {
+export default function <S extends Shape>(path: string='/', shape: S): View<S> & Node {
   const layout = getLayout(shape)
   establishFrame(shape)
   const s = malloc(shape)
   setContext<S, Node>(s, Node_path, path)
   setLayout(s, layout)
-  return s as S & Node
+  return s as View<S> & Node
 }
 
 export const getNodePath = (obj: any): string =>

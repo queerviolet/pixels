@@ -21,10 +21,11 @@ import Data from 'parcel-plugin-writable/client'
 
 import Node, { write } from 'parcel-plugin-writable/src/node'
 import { vec2, float, malloc, view } from 'parcel-plugin-writable/src/struct'
-global.stroke = Node('abc', {
+const stylus = Node('stylus', {
   pos: vec2,
   force: float,
 })
+global.stylus = stylus
 global.write = write
 
 
@@ -124,6 +125,11 @@ function CopyEventsToStroke({ _, stroke }: any) {
         pressure: 0.5
       })
       _(stroke)
+
+      
+      stylus.pos.set(frameCoordsFrom(ev) as any)
+      stylus.force.set(0.5)
+      write(stylus)
     }
 
     return () => {

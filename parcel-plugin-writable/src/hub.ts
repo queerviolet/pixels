@@ -1,5 +1,5 @@
 import { Peer } from './peer'
-import { Unsubscribe } from 'event';
+import { Unsubscribe } from './event';
 
 export default function Hub() {
   const peers: Peer[] = []

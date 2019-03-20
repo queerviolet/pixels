@@ -28,7 +28,7 @@ export default ({ dataDir='.', tickleProtectionMs = 200 }: Partial<Options>): Pe
     return { send }
 
     function send(msg: Message, data?: Data) {
-      // debug('Received:', msg, data)
+      debug('Received:', msg, data)
       if (msg.type === 'data...') {
         const { layout } = msg
         const frame = establishFrame()
