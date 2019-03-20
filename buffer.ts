@@ -11,6 +11,8 @@ declare interface Buffer {
 }
 
 import { Node, Read } from 'parcel-plugin-writable/var.d'
+import { Peer } from 'parcel-plugin-writable/src/peer'
+import createEvent from 'parcel-plugin-writable/src/event'
 
 export type StreamNode = { stream: Stream, push: Node, subscription: Unsubscribable }
 

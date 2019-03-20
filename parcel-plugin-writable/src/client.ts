@@ -1,18 +1,23 @@
-import Hub from './hub'
+import createHub, { Hub } from './hub'
 import createPeer, { Connection, Data, ConnectionMethods, PeerMessage, PeerMethods } from './peer'
 import createEvent from './event'
 import { Message } from './message';
-type Emit = { emit: (message: Message, data?: Data) => void }
 
-const Client = () => createEvent<PeerMessage, PeerMethods & Emit>((emit, self) => ({
+type ClientMethods = PeerMethods & {
+  emit: (message: Message, data?: Data) => void
+  connect: Hub
+}
+
+const Client = (connect: Hub) => createEvent<PeerMessage, ClientMethods>((emit, from) => ({
   send(message: Message, data?: Data) {},
   emit(message: Message, data?: Data) {
     emit({
-      from: this,
+      from,
       message,
       data
     })
-  }
+  },
+  connect
 }))
 
 const ServerConnection = (url=`ws://${location.host}/__data__/`): Connection =>
@@ -67,9 +72,9 @@ const ServerConnection = (url=`ws://${location.host}/__data__/`): Connection =>
     }
   })
 
-const connect = Hub()
+const connect = createHub()
 connect(createPeer(ServerConnection()))
-const client = Client()
+const client = Client(connect)
 connect(client)
   
 export default client
