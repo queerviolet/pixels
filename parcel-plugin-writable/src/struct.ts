@@ -25,6 +25,7 @@ const Frame_byteOffset = Symbol('Byte offset for current frame')
 
 export type Accessor<T> = {
   readonly value: T
+  readonly array: ArrayBufferView
   set(value: T): void
 }
 const Accessor = Symbol('Accessor for shape')
@@ -55,13 +56,33 @@ export const float32: float32 = {
     const frame = getFrame(this)
     frame[Frame_view].setFloat32(fieldOffset + frame[Frame_byteOffset], value, true)
   },
+
+  get array() {
+    const {
+      byteOffset: fieldOffset=0
+    } = this
+    const frame = getFrame(this)
+    return new Float32Array(
+      frame[Frame_buffer],
+      frame[Frame_byteOffset] + fieldOffset, this[size] / Float32Array.BYTES_PER_ELEMENT)
+  },
+
+  toJSON() {
+    return {
+      type: 'float',
+      path: this.path,
+      byteOffset: this.byteOffset,
+      byteLength: this.byteLength,
+      component: float.component
+    }
+  }
 } as float32
 float32[dtype] = float32
 float32[Accessor] = float32
 export const float = float32
 
 export const vec2_f32: vec2_f32 = {
-  type: 'vec2_f32',
+  type: 'vec2',
   byteLength: 2 * 32 / 8,
   [size]: 2 * 32 / 8,
   component: {
@@ -78,6 +99,10 @@ export const vec2_f32: vec2_f32 = {
       frame[Frame_byteOffset] + fieldOffset, this[size] / Float32Array.BYTES_PER_ELEMENT)
   },
 
+  get array() {
+    return this.value
+  },
+
   set(x: number | number[], y?: number) {
     const {
       byteOffset: fieldOffset=0,
@@ -91,6 +116,15 @@ export const vec2_f32: vec2_f32 = {
     typeof y !== 'undefined' &&
       view.setFloat32(offset + component.byteLength, y, true)
   },
+  toJSON() {
+    return {
+      type: 'vec2',
+      path: this.path,
+      byteOffset: this.byteOffset,
+      byteLength: this.byteLength,
+      component: vec2.component
+    }
+  }
 } as any as vec2_f32
 vec2_f32[dtype] = vec2_f32
 vec2_f32[Accessor] = vec2_f32
@@ -162,9 +196,12 @@ function frameForwarder<S extends Shape>(map: S, base=establishContext<S>()): S 
           descriptor = frameForwarder(map[field])
         else
           descriptor = Object.create(map[field])          
-        descriptor[Contexts] = Object.create(this[Contexts])
+        const newContexts = Object.create(this[Contexts])
+        descriptor [Contexts] = Object.assign(newContexts, descriptor[Contexts])
         return descriptor
       },
+
+      enumerable: true,
 
       set(value: any) {
         this[field].set(value)
@@ -179,29 +216,31 @@ export function establishContext<T>(o: T={} as T): T {
   return o
 }
 
-export function establishFrame<T>(o: T, frame=o): T & Frame {
+export function establishFrame<T>(o?: T, frame=o || {}): T & Frame {
+  o = establishContext((o || frame) as T)
   return setContext<T, Frame>(o, Frame_current, frame)
 }
 
 export interface Frame { __$Frame__ : 'Established frame' }
 
 export function malloc<S extends Shape>(shape: S, count=1): S & Frame {
-  const buf = new ArrayBuffer(sizeof(shape) * count)
+  const buf = new ArrayBuffer(sizeof(shape) * count)  
   return setOffset(setBuffer(view(shape), buf), 0) as S & Frame
 }
 
-export function setBuffer(frame: Frame, buffer: ArrayBuffer) {
+export function setBuffer(target: Frame, buffer: ArrayBuffer) {
+  const frame = target[Contexts][Frame_current]
   frame [Frame_buffer] = buffer
   frame [Frame_view] = new DataView(buffer, 0)
   return frame
 }
 
 export function getBuffer(frame: Frame): ArrayBuffer {
-  return frame [Frame_buffer]
+  return frame[Contexts][Frame_current][Frame_buffer]
 }
 
 export function setOffset(frame: Frame, byteOffset: number) {
-  frame [Frame_byteOffset] = byteOffset
+  frame[Contexts][Frame_current][Frame_byteOffset] = byteOffset
   return frame
 }
 
@@ -210,6 +249,7 @@ export function sizeof(shape: Shape): number {
 }
 
 const cachedLayout = Symbol('Cached root layout for this Shape')
+;(global as any).getLayout = getLayout
 export function getLayout<S extends Shape>(shape: S, layout?: Layout<S>, path: string[]=[]): Layout<S> {
   if (!path.length && shape[cachedLayout]) {
     console.log('returning cached layout', shape[cachedLayout], 'for', shape)
@@ -227,6 +267,10 @@ export function getLayout<S extends Shape>(shape: S, layout?: Layout<S>, path: s
     ;(shape as any)[cachedLayout] = layout
   }
   return layout
+}
+
+export function setLayout(target: any, layout: Layout) {
+  target[cachedLayout] = layout
 }
 
 const DTYPE = { vec2, float }
@@ -253,6 +297,8 @@ export class Layout<S extends Shape={}> {
     const field = Object.create(type)
     field.path = path
     field.byteOffset = this.byteLength
+    field.type = type.type
+    field.component = type.component
     this.fields.push(field)
     this.byteLength += sz
 

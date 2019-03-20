@@ -18,7 +18,7 @@ export type DataMessage = {
 
 export function parse(input: string): Message {
   const message: Message = JSON.parse(input)
-  if (message.type === 'data...') {
+  if (message && message.type === 'data...') {
     message.layout = (message.layout as (Location & Descriptor)[])
       .map(parseField)
   }

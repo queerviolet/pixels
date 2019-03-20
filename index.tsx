@@ -21,10 +21,10 @@ import Data from 'parcel-plugin-writable/client'
 
 import Node, { write } from 'parcel-plugin-writable/src/node'
 import { vec2, float, malloc, view } from 'parcel-plugin-writable/src/struct'
-global.stroke = Node('/stroke', malloc(view({
+global.stroke = Node('abc', {
   pos: vec2,
   force: float,
-})))
+})
 global.write = write
 
 

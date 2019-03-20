@@ -24,10 +24,12 @@ const ServerConnection = (url=`ws://${location.host}/__data__/`): Connection =>
     }
 
     function sendMessage(msg: Message) {
+      console.log('Sending message:', msg)
       sock.send(JSON.stringify(msg))
     }
 
     function sendData(data: Data) {
+      console.log('Sending data:', data)
       sock.send(data)
     }
   

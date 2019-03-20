@@ -6,6 +6,7 @@ import { watch } from 'chokidar'
 
 import createEvent from './event'
 import { createWriteStream, WriteStream, mkdirSync } from 'fs';
+import { setBuffer, establishFrame } from './struct';
 
 interface Options {
   dataDir: string
@@ -27,8 +28,11 @@ export default ({ dataDir='.', tickleProtectionMs = 200 }: Partial<Options>): Pe
     return { send }
 
     function send(msg: Message, data?: Data) {
+      // debug('Received:', msg, data)
       if (msg.type === 'data...') {
         const { layout } = msg
+        const frame = establishFrame()
+        setBuffer(frame, ArrayBuffer.isView(data) ? data.buffer : data)
         let i = layout.length; while (i --> 0) {
           const l = layout[i]
           const path = filePathFromLocation(l)
@@ -36,7 +40,12 @@ export default ({ dataDir='.', tickleProtectionMs = 200 }: Partial<Options>): Pe
             console.error('Invalid location:', l)
             continue
           }
-          writerFor(path).write(data)
+          // TODO: Write through the field descriptor
+          establishFrame(l, frame)
+          const ary = l.array
+          const buf = Buffer.from(ary.buffer.slice(ary.byteOffset, ary.byteLength))        
+          writerFor(path).write(buf)
+          console.log('wrote', path, buf.buffer.byteLength, 'bytes')
           lastTouched[path] = Date.now()
         }
       }
@@ -54,8 +63,8 @@ export default ({ dataDir='.', tickleProtectionMs = 200 }: Partial<Options>): Pe
       if (Date.now() - (lastTouched[path] || 0) > tickleProtectionMs) {
         const message = withLocation(path, { type: 'changed' as 'changed' })
         if (!message) return
-        debug('Closing', path)
         writers[path] && writers[path].close()
+        debug('Closed', path)
         writers[path] = null
         emit({
           from: self,
@@ -67,6 +76,7 @@ export default ({ dataDir='.', tickleProtectionMs = 200 }: Partial<Options>): Pe
     function filePathFromLocation(location: Location): string | null {
       const node = join(dataDir, location.node, location.path.join('.'))
       if (!node.startsWith(dataDir)) return null
+      return node
     }
 
     function withLocation<M>(path: string, message: M): M & Location {
