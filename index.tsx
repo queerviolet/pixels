@@ -171,24 +171,23 @@ const lumaLoop = new Luma.AnimationLoop({
             
                 const program = cell.read(Shader({
                   vs: `
-                  attribute vec2 pos;
-                    // attribute float pressure;
+                    attribute vec2 pos;
+                    attribute float force;
                     uniform mat4 uProjection;
-                    varying float vPressure;
+                    varying float vForce;
             
                     void main() {
                       gl_Position = uProjection * vec4(pos.x, pos.y, 0.0, 1.0);
-                      // gl_PointSize = 5.0 * pressure * 7.0;
-                      gl_PointSize = 10.0;
-                      vPressure = 0.2;//pressure;
+                      gl_PointSize = 5.0 * force * 7.0;
+                      vForce = force;
                     }
                   `,
                   fs: `
                     precision highp float;
-                    varying float vPressure;
+                    varying float vForce;
             
                     void main() {
-                      gl_FragColor = vec4(1.0, 0.0, 1.0, vPressure);
+                      gl_FragColor = vec4(1.0, 0.0, 1.0, vForce);
                     }
                   `
                 })).value
@@ -204,14 +203,15 @@ const lumaLoop = new Luma.AnimationLoop({
                 if (!vertexArray) return
 
                 const pos = cell.read(VertexArrayBuffer({ node: 'stylus', column: ['pos'], dtype: 'vec2' })).value
-                if (!pos) return
-                // console.log('pos=', pos, pos && pos.count)
+                const force = cell.read(VertexArrayBuffer({ node: 'stylus', column: ['force'], dtype: 'float' })).value
+                if (!pos || !force) return
               
                 const vertexCount = pos.count
                 if (!vertexCount) return
 
                 vertexArray.setAttributes({
                   pos: pos.buffer,
+                  force: force.buffer,
                 })
 
                 program.setUniforms({
