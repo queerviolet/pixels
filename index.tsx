@@ -107,12 +107,18 @@ import { Seed, Cell } from './loop'
 function Shader(props: WithShaderSource, cell?: Cell) {
   if (!cell) return Seed(Shader, props)
   const { vs, fs } = props
-  const gl = cell.read(GLContext).value
-  return cell.effect('program', write => {    
+  const gl = cell.read(GLContext)
+  return cell.effect('program', _ => {    
     console.log(vs, fs)
     const program = new Luma.Program(gl, { vs, fs })    
-    write(program)
-    return () => program.delete()
+    const vertexArray = new Luma.VertexArray(gl, { program })
+    _({program, vertexArray})
+    return (binding: any) => {
+      if (!binding) return
+      const { program, vertexArray } = binding
+      program.delete()
+      vertexArray.delete()
+    }
   }, [gl, vs, fs])
 }
 
@@ -129,9 +135,8 @@ const DTYPES: { [key: string]: dtype }= { float, vec2 }
 
 function VertexArrayBuffer(props: WithCol, cell?: Cell) {
   if (!cell) return Seed(VertexArrayBuffer, props)
-  const col = Data(props.node, props.column, DTYPES[props.dtype])
-  const gl = cell.read(GLContext).value
-  const client = cell.read(DataContext).value
+  const gl = cell.read(GLContext)
+  const client = cell.read(DataContext)
   return cell.effect<Luma.Buffer>('buffer', _ => {
     const listener = vertexArrayBuffer(gl, props.node, props.column, DTYPES[props.dtype])
     const unsubscribe = listener.onChange(stream => {
@@ -165,11 +170,11 @@ const lumaLoop = new Luma.AnimationLoop({
           <Loop loop={loop}>
             <Eval>{
               (_, cell) => {
-                const gl = cell.read(GLContext).value
+                const gl = cell.read(GLContext)
                 if (!gl) return
                 cell.read(ReadStroke({ path: 'stylus' }))
             
-                const program = cell.read(Shader({
+                const { program, vertexArray } = cell.read(Shader({
                   vs: `
                     attribute vec2 pos;
                     attribute float force;
@@ -190,20 +195,11 @@ const lumaLoop = new Luma.AnimationLoop({
                       gl_FragColor = vec4(1.0, 0.0, 1.0, vForce);
                     }
                   `
-                })).value
+                })) || ({} as any)
                 if (!program) return
-                const vertexArray = cell.effect<Luma.VertexArray>('vertex-array',
-                  _ => {
-                    if (!gl || !program) return
-                    _(new Luma.VertexArray(gl, { program }))
-                    return (va: any) => va && va.delete()
-                  },                  
-                  [gl, program]
-                )
-                if (!vertexArray) return
 
-                const pos = cell.read(VertexArrayBuffer({ node: 'stylus', column: ['pos'], dtype: 'vec2' })).value
-                const force = cell.read(VertexArrayBuffer({ node: 'stylus', column: ['force'], dtype: 'float' })).value
+                const pos = cell.read(VertexArrayBuffer({ node: 'stylus', column: ['pos'], dtype: 'vec2' }))
+                const force = cell.read(VertexArrayBuffer({ node: 'stylus', column: ['force'], dtype: 'float' }))
                 if (!pos || !force) return
               
                 const vertexCount = pos.count

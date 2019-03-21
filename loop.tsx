@@ -243,7 +243,11 @@ export class Cell {
 
   private outputs: { [key: string]: Cell } = {}
 
-  public read(pattern: any): Cell {
+  public read(pattern: any): any {
+    return this.get(pattern).value
+  }
+
+  public get(pattern: any): Cell {
     const target = this.context(pattern)
     target.addOutput(this)
     return target
