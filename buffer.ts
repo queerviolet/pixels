@@ -126,7 +126,7 @@ function set(buffer: Buffer, data: DataSource, offset: number) {
 
   if (ArrayBuffer.isView(data) || data instanceof ArrayBuffer) {
     data instanceof ArrayBuffer
-      ? buffer.subData(new Uint8Array(data), offset)
+      ? buffer.subData({data: new Uint8Array(data), offset})
       : buffer.subData({
         data,
         offset

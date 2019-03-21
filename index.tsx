@@ -50,12 +50,12 @@ const DataContext = React.createContext(null)
 //   }
 // )
 
-function ReadStroke(props: WithPath, cell?: Cell) {
-  if (!cell) return Seed(ReadStroke, props)
-  const { path } = props
+function RecordStroke(props: WithNode, cell?: Cell) {
+  if (!cell) return Seed(RecordStroke, props)
+  const { node } = props
   return cell.effect('listen-and-write', () => {
-    const pos = Data(path, ['pos'], vec2)
-    const force = Data(path, ['force'], float)
+    const pos = Data(node, ['pos'], vec2)
+    const force = Data(node, ['force'], float)
 
     const canvas = document.createElement('div')
     canvas.style.width = '100%'
@@ -95,11 +95,11 @@ function ReadStroke(props: WithPath, cell?: Cell) {
       canvas.removeEventListener('touchend', onTouch)
       document.body.removeChild(canvas)
     }
-  }, [path])
+  }, [node])
 }
 
 
-type WithPath = { path?: string }
+type WithNode = { node?: string }
 type WithShaderSource = { vs: string, fs: string }
 
 import { Seed, Cell } from './loop'
@@ -172,7 +172,7 @@ const lumaLoop = new Luma.AnimationLoop({
               (_, cell) => {
                 const gl = cell.read(GLContext)
                 if (!gl) return
-                cell.read(ReadStroke({ path: 'stylus' }))
+                cell.read(RecordStroke({ node: 'stylus' }))
             
                 const { program, vertexArray } = cell.read(Shader({
                   vs: `
@@ -192,7 +192,7 @@ const lumaLoop = new Luma.AnimationLoop({
                     varying float vForce;
             
                     void main() {
-                      gl_FragColor = vec4(1.0, 0.0, 1.0, vForce);
+                      gl_FragColor = vec4(1.0, 0.0, 1.0, 0.5 + vForce);
                     }
                   `
                 })) || ({} as any)
@@ -226,13 +226,11 @@ const lumaLoop = new Luma.AnimationLoop({
                   drawMode: GL.POINTS,
                 })
             
+                gl.clearColor(0.0, 0.0, 0.0, 1.0)
+                gl.clear(GL.COLOR_BUFFER_BIT)
                 Luma.withParameters(gl, {
                   [GL.BLEND]: true,
-                  // blendColor: [GL.BLEND_COLOR],
-                  // blendEquation: [GL.FUNC_ADDGL.BLEND_EQUATION_RGB, GL.BLEND_EQUATION_ALPHA],
-                  // blendFunc: [GL.BLEND_SRC_RGB, GL.BLEND_SRC_ALPHA],
-            
-                  blendFuncPart: [GL.ONE_MINUS_SRC_ALPHA, GL.ZERO, GL.CONSTANT_ALPHA, GL.ZERO],
+                  blendFunc: [GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA]
                 }, draw)
               }
             }</Eval>
@@ -248,8 +246,6 @@ const lumaLoop = new Luma.AnimationLoop({
   },
 
   onRender({ tick, loop, }) {
-    // gl.clearColor(0.0, 0.0, 0.0, 1.0)
-    // gl.clear(GL.COLOR_BUFFER_BIT)
     loop(Clock).write(tick)
     loop.run()
   }
