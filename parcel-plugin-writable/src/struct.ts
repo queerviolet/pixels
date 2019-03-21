@@ -13,11 +13,12 @@ export type Descriptor<T=dtype["type"]> = {
   byteOffset?: number
 }
 
-export type vec2_f32 = Field<'vec2', Float32Array>
 export type float32 = Field<'float', number>
 export type uint8 = Field<'byte', number>
+export type vec2_f32 = Field<'vec2', Float32Array>
+export type vec4_f32 = Field<'vec4', Float32Array>
 
-export type dtype = float32 | vec2_f32 | uint8
+export type dtype = float32 | vec2_f32 | uint8 | vec4_f32
 
 const Contexts = Symbol('Context values for this object')
 
@@ -210,6 +211,66 @@ vec2_f32[Accessor] = vec2_f32
 
 export const vec2 = vec2_f32
 
+
+export const vec4_f32: vec2_f32 = {
+  type: 'vec4',
+  ArrayType: new Float32Array(0),
+  byteLength: 4 * 32 / 8,
+  [size]: 4 * 32 / 8,
+  component: {
+    byteLength: 32 / 8,
+    count: 4,
+  },
+  get value() {
+    const {
+      byteOffset: fieldOffset=0
+    } = this
+    const frame = getFrame(this)
+    return new Float32Array(
+      frame[Frame_buffer],
+      frame[Frame_byteOffset] + fieldOffset, this.byteLength / Float32Array.BYTES_PER_ELEMENT)
+  },
+
+  read(buffer: ArrayBuffer, offset: number = 0) {
+    return new Float32Array(
+      buffer, offset + this.byteOffset,
+      this.byteLength / Float32Array.BYTES_PER_ELEMENT
+    )
+  },
+
+  get array() {
+    return this.value
+  },
+
+  set(x: number | number[], y?: number) {
+    const {
+      byteOffset: fieldOffset=0,
+      component,
+    } = this
+    const frame = getFrame(this)
+    const view: DataView = frame[Frame_view]
+    if (typeof x !== 'number') { [x, y] = x }
+    const offset = fieldOffset + frame[Frame_byteOffset]
+    view.setFloat32(offset, x, true)
+    typeof y !== 'undefined' &&
+      view.setFloat32(offset + component.byteLength, y, true)
+  },
+  toJSON() {
+    return {
+      type: 'vec4',
+      path: this.path,
+      byteOffset: this.byteOffset,
+      byteLength: this.byteLength,
+      component: vec4.component,
+      node: this.node,
+    }
+  }
+} as any as vec2_f32
+vec4_f32[dtype] = vec4_f32
+vec4_f32[Accessor] = vec4_f32
+
+export const vec4 = vec2_f32
+
 export interface Structure {
   [field: string]: Shape
 }
@@ -357,7 +418,7 @@ export function setLayout(target: any, layout: Layout) {
   target[cachedLayout] = layout
 }
 
-const DTYPE = { vec2, float, byte }
+const DTYPE = { vec2, vec4, float, byte }
 type DTYPE<T extends string> =
   T extends 'vec2' ? vec2_f32
   : T extends 'float' ? float32

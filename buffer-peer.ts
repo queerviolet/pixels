@@ -64,6 +64,7 @@ export const createBufferPeer = <B>(node: string, column: string[], dtype: dtype
 }
 
 import GL from 'luma.gl/constants'
+import { TextureDataStream } from './texture'
 
 export const vertexArrayBuffer = (gl: any, node: string, column: string[], dtype: dtype) => {
   const ops: BufferOps<Stream> = {
@@ -83,4 +84,21 @@ export const vertexArrayBuffer = (gl: any, node: string, column: string[], dtype
     }
   }
   return createBufferPeer<Stream>(node, column, dtype, ops)
+}
+
+export const textureBuffer = (gl: any, node: string, column: string[], dtype: dtype) => {
+  const ops: BufferOps<TextureDataStream> = {
+    alloc(column: dtype) {
+      return new TextureDataStream(gl, column.component.count)
+    },
+
+    append(stream: TextureDataStream, data: Data) {
+      stream.push(data)
+    },
+
+    clear(stream: TextureDataStream) {
+      stream.clear()
+    }
+  }
+  return createBufferPeer<TextureDataStream>(node, column, dtype, ops)
 }
