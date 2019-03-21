@@ -7,7 +7,7 @@ const Data_message = Symbol('Data message to lead column with')
 import { Shape, Frame, dtype, setLayout, getContext, getBuffer, setContext, hasFrame, malloc, getLayout, establishFrame, View } from './struct'
 import defaultClient from './client'
 
-export type Node = { __$Node__: 'A data node' }
+export type Node = { dtype: dtype, __$Node__: 'A data node' }
 
 export default function <T extends dtype>(node: string='/', column: string[], type: T): Float32Array & Node {
   // const layout = getLayout(shape)
@@ -24,6 +24,7 @@ export default function <T extends dtype>(node: string='/', column: string[], ty
     node, column
   }
   ;(array as any).component = type.component
+  ;(array as any).dtype = type
   return array as Float32Array & Node
 }
 

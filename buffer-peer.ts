@@ -3,6 +3,7 @@ import createEvent, { Event, Emitter } from './parcel-plugin-writable/src/event'
 import { PeerMessage, PeerMethods, Data } from 'parcel-plugin-writable/src/peer'
 import { Descriptor, dtype } from 'parcel-plugin-writable/src/struct'
 import { Message, Location } from './parcel-plugin-writable/src/message'
+import { Node } from './parcel-plugin-writable/src/node'
 import { Stream } from './buffer'
 import { append } from 'parcel-plugin-writable/client';
 import { join } from 'path'
@@ -23,11 +24,11 @@ function filePathFromLocation(location: Location): string | null {
   return join(location.node, location.column.join('.'))
 }
 
-export const createBufferPeer = <B>(field: Node & dtype, { alloc, append, clear }: BufferOps<B>) => {
-  const fieldPath = getPath(field)
+export const createBufferPeer = <B>(node: string, column: string[], dtype: dtype, { alloc, append, clear }: BufferOps<B>) => {
+  const fieldPath = filePathFromLocation({node, column})
   let didChange
   const onChange = createEvent<B>(emit => { didChange = emit })
-  const buffer = alloc(field)
+  const buffer = alloc(dtype)
 
   return createEvent<PeerMessage, DataBuffers<B>>(
     (emit, self) => {
@@ -36,7 +37,7 @@ export const createBufferPeer = <B>(field: Node & dtype, { alloc, append, clear 
           from: self,
           message: {
             type: 'read?',
-            ...getLocation(field)
+            node, column,
           }
         }
         emit(msg)
@@ -64,9 +65,9 @@ export const createBufferPeer = <B>(field: Node & dtype, { alloc, append, clear 
 
 import GL from 'luma.gl/constants'
 
-export const vertexArrayBuffer = (gl: any, field: Node & dtype) => {
+export const vertexArrayBuffer = (gl: any, node: string, column: string[], dtype: dtype) => {
   const ops: BufferOps<Stream> = {
-    alloc(column: Descriptor) {
+    alloc(column: dtype) {
       return new Stream(gl, {
         type: GL.FLOAT,
         size: column.component.count
@@ -81,5 +82,5 @@ export const vertexArrayBuffer = (gl: any, field: Node & dtype) => {
       stream.clear()  
     }
   }
-  return createBufferPeer<Stream>(field, ops)
+  return createBufferPeer<Stream>(node, column, dtype, ops)
 }

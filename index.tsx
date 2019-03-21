@@ -16,7 +16,7 @@ const frameCoordsFrom = ({
   ]
 
 import Data, { write } from 'parcel-plugin-writable/src/node'
-import { vec2, float } from 'parcel-plugin-writable/src/struct'
+import { dtype, vec2, float } from 'parcel-plugin-writable/src/struct'
 
 import GL from 'luma.gl/constants'
 import { Matrix4 } from 'math.gl'
@@ -119,15 +119,21 @@ function Shader(props: WithShaderSource, cell?: Cell) {
 const Clock = React.createContext(0)
 
 
-type WithCol = { col: any }
+type WithCol = {
+  node: string
+  column: string[]
+  dtype: string
+}
+
+const DTYPES: { [key: string]: dtype }= { float, vec2 }
 
 function VertexArrayBuffer(props: WithCol, cell?: Cell) {
   if (!cell) return Seed(VertexArrayBuffer, props)
-  const { col } = props
+  const col = Data(props.node, props.column, DTYPES[props.dtype])
   const gl = cell.read(GLContext).value
   const client = cell.read(DataContext).value
   return cell.effect<Luma.Buffer>('buffer', _ => {
-    const listener = vertexArrayBuffer(gl, col)    
+    const listener = vertexArrayBuffer(gl, props.node, props.column, DTYPES[props.dtype])
     const unsubscribe = listener.onChange(stream => {
       _(stream)
     })
@@ -139,7 +145,7 @@ function VertexArrayBuffer(props: WithCol, cell?: Cell) {
       unsubscribe()
       stream && stream.buffer && stream.buffer._deleteHandle()
     }
-  }, [col])
+  }, [props.node, props.column, props.dtype])
 }
 
 import { vertexArrayBuffer } from './buffer-peer'
@@ -197,7 +203,7 @@ const lumaLoop = new Luma.AnimationLoop({
                 )
                 if (!vertexArray) return
 
-                const pos = cell.read(VertexArrayBuffer({ col: Data('stylus', ['pos'], vec2) })).value
+                const pos = cell.read(VertexArrayBuffer({ node: 'stylus', column: ['pos'], dtype: 'vec2' })).value
                 if (!pos) return
                 // console.log('pos=', pos, pos && pos.count)
               

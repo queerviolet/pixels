@@ -113,6 +113,7 @@ export function createLoop(): CellContext {
         }
       } catch (error) {
         console.error(new EvaluationError(error, current))
+        console.error(error)
       }
       // console.log('%c did evaluate %s cells', 'color: red', cells.size)
       didEvaluate(cells)
