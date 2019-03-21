@@ -20,7 +20,6 @@ interface BufferOps<B> {
 }
 
 function filePathFromLocation(location: Location): string | null {
-  console.log('location=', location)
   return join(location.node, location.column.join('.'))
 }
 

@@ -129,11 +129,10 @@ function VertexArrayBuffer(props: WithCol, cell?: Cell) {
   return cell.effect<Luma.Buffer>('buffer', _ => {
     const listener = vertexArrayBuffer(gl, col)    
     const unsubscribe = listener.onChange(stream => {
-      console.log('Did get stream:', stream)
       _(stream)
     })
     const disconnect = client.connect(listener, 'Vertex Array Buffer')
-    listener((msg) => console.log('*#*@*msg', msg))
+    // listener((msg) => console.log('*#*@*msg', msg))
 
     return stream => {
       disconnect()
@@ -208,10 +207,7 @@ const lumaLoop = new Luma.AnimationLoop({
                 vertexArray.setAttributes({
                   pos: pos.buffer,
                 })
-                console.log('pos.array=', new Float32Array(pos.array.buffer),  pos.array.byteLength)
 
-                console.log('vertexCount=', vertexCount)
-            
                 program.setUniforms({
                   uProjection: new Matrix4().ortho({
                     top: -9,
