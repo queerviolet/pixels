@@ -11,7 +11,7 @@ type ClientMethods = PeerMethods & {
 const Client = (connect: Hub) => createEvent<PeerMessage, ClientMethods>((emit, from) => ({
   send(message: Message, data?: Data) {},
   emit(message: Message, data?: Data) {
-    console.log('Client emit', message, data)
+    // console.log('Client emit', message, data)
     emit({
       from,
       message,
@@ -44,12 +44,11 @@ const ServerConnection = (url=`ws://${location.host}/__data__/`) =>
     }
 
     function sendMessage(msg: Message) {
-      console.log('Sending message:', msg)
-      sock.send(JSON.stringify(msg))
+      if (!msg) throw new Error('Message cannot be null')
+      sock && sock.send(JSON.stringify(msg))
     }
 
     function sendData(data: Data) {
-      console.log('Sending data:', data)
       sock.send(data)
     }
   
@@ -83,10 +82,15 @@ const ServerConnection = (url=`ws://${location.host}/__data__/`) =>
     }
   })
 
-const connect = createHub()
-const server = (window as any).__Server || ((window as any).__Server = ServerConnection())
-connect(createPeer(server))
-const client = Client(connect)
-connect(client)
+function createClient() {
+  if ((window as any).__Client) return (window as any).__Client
+  const connect = createHub()
+  const server = (window as any).__Server || ((window as any).__Server = ServerConnection())
+  connect(createPeer(server), 'Server connection')
+  const client = Client(connect)
+  connect(client, 'Writer')
+  ;(window as any).__Client = client
+  return client
+}
   
-export default client
+export default createClient()

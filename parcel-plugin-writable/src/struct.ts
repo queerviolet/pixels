@@ -31,6 +31,7 @@ export type Accessor<T> = {
   readonly array: ArrayBufferView
   set(value: T): void
   read(buffer: ArrayBuffer, offset?: number): ArrayBufferView
+  ArrayType: ArrayBufferView
 }
 const Accessor = Symbol('Accessor for shape')
 
@@ -39,6 +40,7 @@ const size = Symbol('size')
 
 export const float32: float32 = {
   type: 'float',
+  ArrayType: new Float32Array(0),
   byteLength: 32 / 8,
   component: {
     byteLength: 32 / 8,
@@ -68,12 +70,12 @@ export const float32: float32 = {
     const frame = getFrame(this)
     return new Float32Array(
       frame[Frame_buffer],
-      frame[Frame_byteOffset] + fieldOffset, this.byteLength)
+      frame[Frame_byteOffset] + fieldOffset, this.byteLength / Float32Array.BYTES_PER_ELEMENT)
   },
 
   read(buffer: ArrayBuffer, offset: number = 0) {
     return new Float32Array(
-      buffer, offset + this.byteOffset, this.byteLength
+      buffer, offset + this.byteOffset, this.byteLength / Float32Array.BYTES_PER_ELEMENT
     )
   },
 
@@ -83,7 +85,8 @@ export const float32: float32 = {
       path: this.path,
       byteOffset: this.byteOffset,
       byteLength: this.byteLength,
-      component: float.component
+      component: float.component,
+      node: this.node,
     }
   }
 } as float32
@@ -94,6 +97,7 @@ export const float = float32
 
 export const byte: uint8 = {
   type: 'byte',
+  ArrayType: new Uint8Array(0),
   byteLength: 1,
   component: {
     byteLength: 1,
@@ -121,10 +125,9 @@ export const byte: uint8 = {
       byteOffset: fieldOffset=0
     } = this
     const frame = getFrame(this)
-    console.log('this=', this, 'FRAME=', frame)
     return new Uint8Array(
       frame[Frame_buffer],
-      frame[Frame_byteOffset] + fieldOffset, this[size])
+      frame[Frame_byteOffset] + fieldOffset, this.byteLength)
   },
 
   read(buffer: ArrayBuffer, offset: number = 0) {
@@ -140,6 +143,7 @@ export const byte: uint8 = {
       byteOffset: this.byteOffset,
       byteLength: this.byteLength,
       component: byte.component,
+      node: this.node
     }
   }
 } as uint8
@@ -149,6 +153,7 @@ byte[Accessor] = byte
 
 export const vec2_f32: vec2_f32 = {
   type: 'vec2',
+  ArrayType: new Float32Array(0),
   byteLength: 2 * 32 / 8,
   [size]: 2 * 32 / 8,
   component: {
@@ -162,13 +167,13 @@ export const vec2_f32: vec2_f32 = {
     const frame = getFrame(this)
     return new Float32Array(
       frame[Frame_buffer],
-      frame[Frame_byteOffset] + fieldOffset, this[size] / Float32Array.BYTES_PER_ELEMENT)
+      frame[Frame_byteOffset] + fieldOffset, this.byteLength / Float32Array.BYTES_PER_ELEMENT)
   },
 
   read(buffer: ArrayBuffer, offset: number = 0) {
     return new Float32Array(
       buffer, offset + this.byteOffset,
-      this.byteLength
+      this.byteLength / Float32Array.BYTES_PER_ELEMENT
     )
   },
 
@@ -195,7 +200,8 @@ export const vec2_f32: vec2_f32 = {
       path: this.path,
       byteOffset: this.byteOffset,
       byteLength: this.byteLength,
-      component: vec2.component
+      component: vec2.component,
+      node: this.node,
     }
   }
 } as any as vec2_f32

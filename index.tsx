@@ -15,15 +15,8 @@ const frameCoordsFrom = ({
     2 * HEIGHT * (clientY - frame.top) / frame.height - HEIGHT,
   ]
 
-import Data, { Node, write } from 'parcel-plugin-writable/src/node'
-import { vec2, float, malloc, view, Descriptor } from 'parcel-plugin-writable/src/struct'
-const stylus = Data('stylus', {
-  pos: vec2,
-  force: float,
-})
-global.stylus = stylus
-global.write = write
-
+import Data, { write } from 'parcel-plugin-writable/src/node'
+import { vec2, float } from 'parcel-plugin-writable/src/struct'
 
 import GL from 'luma.gl/constants'
 import { Matrix4 } from 'math.gl'
@@ -61,10 +54,8 @@ function ReadStroke(props: WithPath, cell?: Cell) {
   if (!cell) return Seed(ReadStroke, props)
   const { path } = props
   return cell.effect('listen-and-write', () => {
-    const stroke = Data(path, {
-      pos: vec2,
-      force: float,
-    })
+    const pos = Data(path, ['pos'], vec2)
+    const force = Data(path, ['force'], float)
 
     const canvas = document.createElement('div')
     canvas.style.width = '100%'
@@ -83,17 +74,18 @@ function ReadStroke(props: WithPath, cell?: Cell) {
       t.preventDefault()
       let i = touches.length; while (i --> 0) {
         const touch = touches.item(i)
-        Object.assign(stroke, {
-          pos: frameCoordsFrom(touch),
-          pressure: touch.force,
-        })
+        pos.set(frameCoordsFrom(touch))
+        force.set([touch.force])
+        write(pos)
+        write(force)
       }
     }
 
     function onMouseMove(ev: MouseEvent) {  
-      stroke.pos.set(frameCoordsFrom(ev) as any)
-      stroke.force.set(0.5)
-      write(stylus)
+      pos.set(frameCoordsFrom(ev) as any)
+      force.set([0.5])
+      write(pos)
+      write(force)
     }
 
     return () => {
@@ -126,20 +118,6 @@ function Shader(props: WithShaderSource, cell?: Cell) {
 
 const Clock = React.createContext(0)
 
-const readFromStroke = (stroke: any) => ({ vertexArray }, cell) => {
-  const s = cell.read(stroke).value
-  if (!s || !vertexArray || !s.pos.stream.buffer || !s.pressure.stream.buffer) {
-    return 0
-  }
-
-  ;(window as any).s = s
-  
-  vertexArray.setAttributes({
-    pos: s.pos.stream.buffer,
-    pressure: s.pressure.stream.buffer,
-  })
-  return s.pos.stream.count
-}
 
 type WithCol = { col: any }
 
@@ -154,7 +132,7 @@ function VertexArrayBuffer(props: WithCol, cell?: Cell) {
       console.log('Did get stream:', stream)
       _(stream)
     })
-    const disconnect = client.connect(listener)
+    const disconnect = client.connect(listener, 'Vertex Array Buffer')
     listener((msg) => console.log('*#*@*msg', msg))
 
     return stream => {
@@ -196,7 +174,7 @@ const lumaLoop = new Luma.AnimationLoop({
                     void main() {
                       gl_Position = uProjection * vec4(pos.x, pos.y, 0.0, 1.0);
                       // gl_PointSize = 5.0 * pressure * 7.0;
-                      gl_PointSize = 1.0;
+                      gl_PointSize = 10.0;
                       vPressure = 0.2;//pressure;
                     }
                   `,
@@ -205,7 +183,7 @@ const lumaLoop = new Luma.AnimationLoop({
                     varying float vPressure;
             
                     void main() {
-                      gl_FragColor = vec4(1.0, 1.0, 1.0, vPressure);
+                      gl_FragColor = vec4(1.0, 0.0, 1.0, vPressure);
                     }
                   `
                 })).value
@@ -220,9 +198,9 @@ const lumaLoop = new Luma.AnimationLoop({
                 )
                 if (!vertexArray) return
 
-                const pos = cell.read(VertexArrayBuffer({ col: stylus.pos })).value
+                const pos = cell.read(VertexArrayBuffer({ col: Data('stylus', ['pos'], vec2) })).value
                 if (!pos) return
-                console.log('pos=', pos, pos.count)
+                // console.log('pos=', pos, pos && pos.count)
               
                 const vertexCount = pos.count
                 if (!vertexCount) return
@@ -230,7 +208,7 @@ const lumaLoop = new Luma.AnimationLoop({
                 vertexArray.setAttributes({
                   pos: pos.buffer,
                 })
-                console.log('pos.buffer=', pos.buffer,  pos.buffer.byteLength)
+                console.log('pos.array=', new Float32Array(pos.array.buffer),  pos.array.byteLength)
 
                 console.log('vertexCount=', vertexCount)
             
@@ -247,7 +225,7 @@ const lumaLoop = new Luma.AnimationLoop({
                 const draw = () => program.draw({
                   vertexArray,
                   vertexCount,
-                  drawMpde: GL.POINTS,
+                  drawMode: GL.POINTS,
                 })
             
                 Luma.withParameters(gl, {

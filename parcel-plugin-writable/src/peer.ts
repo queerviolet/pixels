@@ -1,4 +1,4 @@
-import { Message, DataMessage, parse } from './message'
+import { Message, parse } from './message'
 import createEvent, { Event } from './event'
 
 export interface PeerMessage {
@@ -24,7 +24,7 @@ export interface PeerMethods {
 
 export default (connection: Connection): Peer =>
   createEvent<PeerMessage, PeerMethods>((emit, self) => {
-    let state: DataMessage | null = null
+    let state: Message | null = null
 
     const destroy = connection(
       raw => {
@@ -40,10 +40,11 @@ export default (connection: Connection): Peer =>
     
     function send(message: Message, data?: Data) {
       if (message.type === 'data...') {
-        if (state !== message) {
-          state = message
-          connection.sendMessage(state)
-        }
+        // if (state !== message) {
+        //   state = message
+        // connection.sendMessage(state)
+        // }                
+        connection.sendMessage(message)
         data && connection.sendData(data)
         return
       }
@@ -51,6 +52,7 @@ export default (connection: Connection): Peer =>
     }
 
     function handleMessage(message: Message) {
+      if (!message) return
       if (message.type === 'data...') {
         state = message
         return

@@ -63,8 +63,9 @@ export class Stream {
     } else {
       // console.log('data is something else')
       const buf = ArrayBuffer.isView(data) ? data.buffer : data
+      const offset = ArrayBuffer.isView(data) ? data.byteOffset : 0            
       // console.log('buffer=', buf, 'array=', this.array.byteLength)
-      this.array.set(new Uint8Array(buf), this.offset)
+      this.array.set(new Uint8Array(buf, offset, data.byteLength), this.offset)
     }
     // console.log('did push', data.byteLength, ' bytes into ', this.array.byteLength, 'offset:', this.offset)
     // console.log(this.array)

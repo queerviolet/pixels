@@ -29,53 +29,47 @@ export default ({ dataDir='.', tickleProtectionMs = 200 }: Partial<Options>): Pe
 
     function send(msg: Message, data?: Data) {
       if (msg.type === 'data...') {
-        const { layout } = msg
-        const frame = establishFrame()
-        setBuffer(frame, ArrayBuffer.isView(data) ? data.buffer : data)
-        let i = layout.length; while (i --> 0) {
-          const l = layout[i]
-          const path = filePathFromLocation(l)
-          if (!path) {
-            console.error('Invalid location:', l)
-            continue
-          }
-          // TODO: Write through the field descriptor
-          establishFrame(l, frame)
-          console.log('l=', l)
-          const ary = l.array
-          const buf = Buffer.from(ary.buffer.slice(ary.byteOffset, ary.byteLength))        
-          writerFor(path).write(buf)
-          console.log('wrote', path, buf.byteLength, 'bytes')
-          lastTouched[path] = Date.now()
-        }
+        const buffer = data as Buffer
+        const path = filePathForLocation(msg)
+        writerFor(path).write(buffer)
+        lastTouched[path] = Date.now()
+        // setBuffer(frame, )
+        // let i = layout.length; while (i --> 0) {
+        //   const l = layout[i]
+        //   const path = filePathFromLocation(l)
+        //   if (!path) {
+        //     console.error('Invalid location:', l)
+        //     continue
+        //   }
+        //   establishFrame(l, frame)
+        //   console.log('l=', l)
+        //   const ary = l.read
+        //   const buf = Buffer.from(ary.buffer.slice(ary.byteOffset, ary.byteLength))        
+        //   writerFor(path).write(buf)
+        //   console.log('wrote', path, buf.byteLength, 'bytes')
+        //   console.log('=', new Float32Array(buf.buffer))
+        //   lastTouched[path] = Date.now()
+        // }
       }
       if (msg.type === 'read?') {
-        const path = filePathFromLocation(msg)
+        const path = filePathForLocation(msg)
         if (!path) {
           console.error('Invalid location:', msg)
           return
         }
-        console.log('Reading', path)
+        debug('Reading', path)
         readFile(path, (err, data) => {          
           if (err) {
             console.error(err)
             return
           }
-          console.log('Read', data.byteLength, 'bytes from', path)
+          debug('Read', data.byteLength, 'bytes from', path)
           emit({
             from: self,
             message: {
               type: 'data...' as 'data...',
-              layout: [
-                {
-                  type: 'byte',
-                  node: msg.node,
-                  path: msg.path,
-                  byteOffset: 0,
-                  byteLength: data.byteLength,
-                  component: byte.component, 
-                } as any
-              ]
+              node: msg.node,
+              column: msg.column,
             },
             data
           })
@@ -105,8 +99,9 @@ export default ({ dataDir='.', tickleProtectionMs = 200 }: Partial<Options>): Pe
       }
     }
 
-    function filePathFromLocation(location: Location): string | null {
-      const node = join(dataDir, location.node, location.path.join('.'))
+    function filePathForLocation(msg: Location): string | null {
+      if (!msg.node || !msg.column) return null
+      const node = join(dataDir, msg.node, msg.column.join('.'))
       if (!node.startsWith(dataDir)) return null
       return node
     }
@@ -116,7 +111,7 @@ export default ({ dataDir='.', tickleProtectionMs = 200 }: Partial<Options>): Pe
       if (relPath.startsWith('..')) return
       const node = dirname(path)
       const structPath = basename(path).split('.')
-      return { ...message, node, path: structPath }
+      return { ...message, node, column: structPath }
     }
   })
 
