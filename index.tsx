@@ -1,30 +1,8 @@
-import { applyLetterbox, Box } from './letterbox'
-
 import hot from './hot'
+import './stage'
 import { GLContext, DataContext } from './contexts'
 import { QueueBuffer, VertexArrayBuffer } from './buffers'
 import { Seed, Cell } from './loop'
-
-
-const WIDTH = 16
-const HEIGHT = 9
-let frame: Box | null = null
-applyLetterbox(WIDTH / HEIGHT, box => frame = box)
-const STAGE_QUAD = [
-  WIDTH, HEIGHT, 0,
-  -WIDTH, HEIGHT, 0,
-  WIDTH, -HEIGHT, 0,
-  -WIDTH, -HEIGHT, 0
-]
-const QUAD_VERTS = new Float32Array([1, 1, 0, -1, 1, 0, 1, -1, 0, -1, -1, 0])
-
-const frameCoordsFrom = ({
-  clientX, clientY,
-}) =>
-  [
-    2 * WIDTH * (clientX - frame.left) / frame.width - WIDTH,
-    2 * HEIGHT * (clientY - frame.top) / frame.height - HEIGHT,
-  ]
 
 import Data, { write } from 'parcel-plugin-writable/src/node'
 import { vec2, float } from 'parcel-plugin-writable/src/struct'
@@ -39,80 +17,13 @@ import Loop, { Eval, createLoop, isContext } from './loop'
 
 //@ts-ignore
 import headshot from './ashi-headshot-02.jpg'
-
-function RecordStroke(props: WithNode, cell?: Cell) {
-  if (!cell) return Seed(RecordStroke, props)
-  const { node } = props
-  return cell.effect('listen-and-write', () => {
-    const pos = Data(node, ['pos'], vec2)
-    const force = Data(node, ['force'], float)
-
-    const canvas = document.createElement('div')
-    canvas.style.width = '100%'
-    canvas.style.height = '100%'
-    canvas.style.position = 'fixed'
-    canvas.style.zIndex = '100'
-    document.body.appendChild(canvas)
-
-    canvas.addEventListener('mousemove', onMouseMove)
-    canvas.addEventListener('touchstart', onTouch)
-    canvas.addEventListener('touchmove', onTouch)
-    canvas.addEventListener('touchend', onTouch)
-
-    function onTouch(t: TouchEvent) {
-      const { touches } = t
-      t.preventDefault()
-      let i = touches.length; while (i --> 0) {
-        const touch = touches.item(i)
-        pos.set(frameCoordsFrom(touch))
-        force.set([touch.force])
-        write(pos)
-        write(force)
-      }
-    }
-
-    function onMouseMove(ev: MouseEvent) {  
-      pos.set(frameCoordsFrom(ev) as any)
-      force.set([0.5])
-      write(pos)
-      write(force)
-    }
-
-    return () => {
-      canvas.removeEventListener('mousemove', onMouseMove)
-      canvas.removeEventListener('touchstart', onTouch)
-      canvas.removeEventListener('touchmove', onTouch)
-      canvas.removeEventListener('touchend', onTouch)
-      document.body.removeChild(canvas)
-    }
-  }, [node])
-}
-
-
-type WithNode = { node?: string }
-type WithShaderSource = { vs: string, fs: string }
-
-function Shader(props: WithShaderSource, cell?: Cell) {
-  if (!cell) return Seed(Shader, props)
-  const { vs, fs } = props
-  const gl = cell.read(GLContext)
-  return cell.effect('program', _ => {    
-    console.log(vs, fs)
-    const program = new Luma.Program(gl, { vs, fs })    
-    const vertexArray = new Luma.VertexArray(gl, { program })
-    _({program, vertexArray})
-    return (binding: any) => {
-      if (!binding) return
-      const { program, vertexArray } = binding
-      program.delete()
-      vertexArray.delete()
-    }
-  }, [gl, vs, fs])
-}
+const QUAD_VERTS = new Float32Array([1, 1, 0, -1, 1, 0, 1, -1, 0, -1, -1, 0])
 
 const Clock = React.createContext(0)
 
+import RecordStroke from './record-stroke'
 import ImageTexture from './image-texture'
+import Shader from './shader'
 
 import defaultClient from './parcel-plugin-writable/src/client'
 
@@ -300,11 +211,12 @@ const lumaLoop = new Luma.AnimationLoop({
                 ? [offscreenA, offscreenB]
                 : [offscreenB, offscreenA]
 
-              if (img && cone && posQueue && forceQueue && posQueue.length) {
+              if (img && cone && posQueue && forceQueue && posQueue.length && forceQueue.length) {
                 const uModel = new Matrix4().rotateX(-Math.PI / 2)
-                let i = posQueue.length; while (i --> 0) {
-                  const uPos = posQueue[i]
-                  const uForce = forceQueue[i] || [0];
+                let batch = Math.min(100, posQueue.length, forceQueue.length)
+                while (batch --> 0) {
+                  const uPos = posQueue.shift()
+                  const uForce = forceQueue.shift()
                   cone.draw({
                     uniforms: {
                       uProjection,
@@ -314,10 +226,8 @@ const lumaLoop = new Luma.AnimationLoop({
                       uImage: img,
                     },
                     framebuffer: src,
-                  })                  
+                  })
                 }
-                posQueue.clear()
-                forceQueue.clear()
               }
               
               const stageVerts = cell.effect<Luma.Buffer>('stage-triangle-buffer', _ => {
