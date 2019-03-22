@@ -1,5 +1,11 @@
 import { applyLetterbox, Box } from './letterbox'
 
+import hot from './hot'
+import { GLContext, DataContext } from './contexts'
+import { QueueBuffer, VertexArrayBuffer } from './buffers'
+import { Seed, Cell } from './loop'
+
+
 const WIDTH = 16
 const HEIGHT = 9
 let frame: Box | null = null
@@ -23,23 +29,18 @@ const frameCoordsFrom = ({
   ]
 
 import Data, { write } from 'parcel-plugin-writable/src/node'
-import { dtype, vec2, float } from 'parcel-plugin-writable/src/struct'
+import { vec2, float } from 'parcel-plugin-writable/src/struct'
 
 import GL from 'luma.gl/constants'
 import { Matrix4, radians } from 'math.gl'
 import * as Luma from 'luma.gl'
-import { Stream } from './buffer'
 
 import { render } from 'react-dom'
 import * as React from 'react'
 import Loop, { Eval, createLoop, isContext } from './loop'
-import { TextureDataStream } from './texture'
 
 //@ts-ignore
 import headshot from './ashi-headshot-02.jpg'
-
-const GLContext = React.createContext(null)
-const DataContext = React.createContext(null)
 
 function RecordStroke(props: WithNode, cell?: Cell) {
   if (!cell) return Seed(RecordStroke, props)
@@ -93,8 +94,6 @@ function RecordStroke(props: WithNode, cell?: Cell) {
 type WithNode = { node?: string }
 type WithShaderSource = { vs: string, fs: string }
 
-import { Seed, Cell } from './loop'
-
 function Shader(props: WithShaderSource, cell?: Cell) {
   if (!cell) return Seed(Shader, props)
   const { vs, fs } = props
@@ -116,74 +115,6 @@ function Shader(props: WithShaderSource, cell?: Cell) {
 const Clock = React.createContext(0)
 
 
-type WithCol = {
-  node: string
-  column: string[]
-  dtype: string
-}
-
-const DTYPES: { [key: string]: dtype }= { float, vec2 }
-
-import { vertexArrayBuffer, textureBuffer, queueBuffer } from './buffer-peer'
-
-function VertexArrayBuffer(props: WithCol, cell?: Cell) {
-  if (!cell) return Seed(VertexArrayBuffer, props)
-  const gl = cell.read(GLContext)
-  const client = cell.read(DataContext)
-  return cell.effect<Stream>('buffer', _ => {
-    const listener = vertexArrayBuffer(gl, props.node, props.column, DTYPES[props.dtype])
-    const unsubscribe = listener.onChange(stream => {
-      _(stream)
-    })
-    const disconnect = client.connect(listener, 'Vertex Array Buffer')
-
-    return stream => {
-      disconnect()
-      unsubscribe()
-      stream && stream.clear()
-    }
-  }, [props.node, props.column.join('.'), props.dtype])
-}
-
-function TextureBuffer(props: WithCol, cell?: Cell) {
-  if (!cell) return Seed(TextureBuffer, props)
-  const gl = cell.read(GLContext)
-  const client = cell.read(DataContext)
-  return cell.effect<TextureDataStream>('texture', _ => {
-    const listener = textureBuffer(gl, props.node, props.column, DTYPES[props.dtype])
-    const unsubscribe = listener.onChange(stream => {
-      _(stream)
-    })
-    const disconnect = client.connect(listener, 'Texture Buffer')
-
-    return stream => {
-      disconnect()
-      unsubscribe()
-      stream && stream.clear()
-    }
-  }, [props.node, props.column.join('.'), props.dtype])
-}
-
-function QueueBuffer(props: WithCol, cell?: Cell) {
-  if (!cell) return Seed(QueueBuffer, props)
-  const client = cell.read(DataContext)
-  const dtype = DTYPES[props.dtype]
-  const key = 'Queue Buffer for ' + props.node + '/' + props.column.join('.')
-  return cell.effect<typeof dtype.ArrayType[]>(key, _ => {
-    const listener = queueBuffer(props.node, props.column, dtype)
-    const unsubscribe = listener.onChange(stream => {
-      ;(stream as any).clear = listener.clear
-      _(stream)
-    })
-    const disconnect = client.connect(listener, key)
-
-    return () => {
-      disconnect()
-      unsubscribe()
-      listener && listener.clear()
-    }
-  }, [props.node, props.column.join('.'), props.dtype])
-}
 
 function ImageTexture(props: { src: string }, cell?: Cell) {
   if (!cell) return Seed(ImageTexture, props)
@@ -553,8 +484,6 @@ const lumaLoop = new Luma.AnimationLoop({
 console.log(GLContext, isContext(GLContext))
 
 lumaLoop.start()
-import hot from './hot'
-import { gt } from 'semver';
 
 hot(module).onDispose(() => {
   lumaLoop.stop()
