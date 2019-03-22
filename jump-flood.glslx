@@ -1,0 +1,287 @@
+precision highp float;
+precision highp int;
+
+// Raw input from a user to be transformed into JFA data
+uniform sampler2D iSeedInputTexture;
+
+// Texture to hold JFA data (rg, ba pairs each holding an
+// x and y co-ordinate respectively)
+uniform sampler2D iInputTexture;
+
+// The size of the input textures, if any
+uniform vec2 iResolution;
+
+// What step size to use for the current round of JFA
+uniform int iStepSize;
+
+// When this is true, Voronoi 'seed' distance wraps
+// around the edges of the input texture
+uniform bool iUseTorusDistanceForSeeds;
+
+// Params for drawing shadows
+uniform float iShadowSpread;
+uniform float iShadowBlur;
+uniform vec4 iShadowColor;
+
+// The color that is *not* to be counted as seed.
+uniform vec4 iBackgroundColor;
+
+// Helpers
+////////////////////////////////////////////////////////////////////////
+
+const vec4 RED = vec4(1.0, 0.0, 0.0, 1.0);
+const vec4 GREEN = vec4(0.0, 1.0, 0.0, 1.0);
+const vec4 BLUE = vec4(0.0, 0.0, 1.0, 1.0);
+const vec4 BLACK = vec4(0.0, 0.0, 0.0, 1.0);
+const vec4 WHITE = vec4(1.0, 1.0, 1.0, 1.0);
+
+// 0.005 * 255 is roughly 1.2, so this will match colors
+// one digit away from each other.
+const float EPSILON = 0.005;
+
+// Return true if `a` and `b` are at most EPSILON apart
+// in any dimension
+bool approxEqual(const vec4 a, const vec4 b) {
+    return all(
+        lessThan(abs(a - b), vec4(EPSILON))
+    );
+}
+
+bool approxEqual(const vec2 a, const vec2 b) {
+    return all(
+        lessThan(abs(a - b), vec2(EPSILON))
+    );
+}
+
+
+bool between(const vec2 value, const vec2 bottom, const vec2 top) {
+    return (
+        all(greaterThan(value, bottom)) &&
+        all(lessThan(value, top))
+    );
+}
+
+bool validUv(const vec2 uv) {
+    return between(
+        uv,
+        vec2(0., 0.),
+        vec2(1., 1.)
+    );
+}
+
+// Split a float into two base-255 encoded floats. Useful for storing
+// a screen co-ordinate as the rg part or ba part of a pixel.
+//
+// This can be passed fractional values. If it's passed (300.5, 300.5)
+// then it will return
+//
+//     vec2(floor(300.5 / 255.), mod(300.5, 255.))
+//
+// which is vec2(1.0, 45.5). Then later, when decoding, we return
+//
+//     channels.x * 255. + channels.y
+//
+// which is 1.0 * 255. + 45.5 which is 300.5. The returned pair has
+// values in the interval [0.0, 255.0). This means that it can be
+// stored as a color value in an UNSIGNED_BYTE texture.
+//
+vec2 encodeScreenCoordinate(const float value_) {
+    float value = value_;
+    return vec2(
+        floor(value / 100.),
+        mod(value, 100.)
+    );
+}
+
+float decodeScreenCoordinate(const vec2 channels) {
+    return channels.x * 100. + channels.y;
+}
+
+// Vertex shader for drawing a quad
+////////////////////////////////////////////////////////////////////////
+
+attribute vec2 quad;
+
+export void vCopyPosition() {
+    gl_Position = vec4(quad, 0, 1.0);
+}
+
+// Each pixel in our grid texture is a cell object. Each cell contains
+// the following info (-1.0, seedIndex, locationX, locationY). The
+// following functions are an 'object-oriented' set of functions for
+// handling cells.
+////////////////////////////////////////////////////////////////////////
+
+// Output is a vec4 that can be stored in a texel
+vec4 createCell(const vec2 screenCoordinate_) {
+    vec2 screenCoordinate = floor(screenCoordinate_);
+    vec2 rg = encodeScreenCoordinate(screenCoordinate.x);
+    vec2 ba = encodeScreenCoordinate(screenCoordinate.y);
+    return vec4(rg, ba) / 255.;
+}
+
+// Output is a vec4 that can be stored in a texel.
+vec4 createInvalidCell() {
+    return createCell(vec2(5000., 5000.));
+}
+
+// Input is a vec4 that can be used as a texture co-ordinate.
+vec2 cell_closestSeed(const vec4 obj_) {
+    vec4 obj = obj_ * 255.;
+    float x = decodeScreenCoordinate(obj.rg);
+    float y = decodeScreenCoordinate(obj.ba);
+    return vec2(x, y) + vec2(0.5);
+}
+
+bool cell_isValid(const vec4 obj) {
+    vec2 location = cell_closestSeed(obj);
+    return location.x < 4999.;
+}
+
+// Fragment shader for prepping an image as a set of seeds ready for JFA
+////////////////////////////////////////////////////////////////////////
+
+export void fPrepForJFA() {
+    vec2 gridUv = gl_FragCoord.xy / iResolution;
+    vec2 gridUvFlippedY = vec2(gridUv.x, 1.0 - gridUv.y);
+    vec4 pixel = texture2D(iSeedInputTexture, gridUvFlippedY);
+    if (approxEqual(pixel, iBackgroundColor)) {
+        gl_FragColor = createInvalidCell();
+    } else {
+        gl_FragColor = createCell(gl_FragCoord.xy);
+    }
+}
+
+// Fragment shader for the Jump Flood algorithm
+////////////////////////////////////////////////////////////////////////
+
+// Returns the distance between `a` and `b` if they're on a torus of size `torusSize`
+float torusDistance(vec2 a, vec2 b, vec2 torusSize) {
+    float firstPart = min(abs(a.x - b.x), torusSize.x - abs(a.x - b.x));
+    float secondPart = min(abs(a.y - b.y), torusSize.y - abs(a.y - b.y));
+    return sqrt(
+        firstPart * firstPart + secondPart * secondPart
+    );
+}
+
+vec4 compareCellWithCellAtOffset(const vec4 self, const vec2 offset) {
+    vec2 gridUv = (gl_FragCoord.xy + offset) / iResolution;
+    vec4 otherCell = texture2D(iInputTexture, gridUv);
+
+    if (!validUv(gridUv) && !iUseTorusDistanceForSeeds) {
+        otherCell = createInvalidCell();
+    }
+
+    if (!cell_isValid(otherCell)) {
+        // Other is invalid. This means that 'offset' is off the grid or
+        // 'otherCell' doesn't have any seed info yet.
+        return self;
+    }
+
+    else if (!cell_isValid(self)) {
+        // Our seed location hasn't been set but other's has.
+        return otherCell;
+    }
+
+    else {
+        vec2 selfSeedLocation = cell_closestSeed(self);
+        vec2 otherSeedLocation = cell_closestSeed(otherCell);
+
+        float selfSeedDist = (
+            iUseTorusDistanceForSeeds ?
+            torusDistance(selfSeedLocation, gl_FragCoord.xy, iResolution) :
+            distance(selfSeedLocation, gl_FragCoord.xy)
+        );
+        float otherSeedDist = (
+            iUseTorusDistanceForSeeds ?
+            torusDistance(otherSeedLocation, gl_FragCoord.xy, iResolution) :
+            distance(otherSeedLocation, gl_FragCoord.xy)
+        );
+
+        if (selfSeedDist > otherSeedDist) {
+            return otherCell;
+        }
+    }
+
+    return self;
+}
+
+export void fJumpFlood() {
+    // Find the object at this grid position
+    vec2 gridUv = gl_FragCoord.xy / iResolution;
+    vec4 thisCell = texture2D(iInputTexture, gridUv);
+
+    int stepSize = iStepSize;
+    thisCell = compareCellWithCellAtOffset(thisCell, vec2(0, stepSize));
+    thisCell = compareCellWithCellAtOffset(thisCell, vec2(stepSize, stepSize));
+    thisCell = compareCellWithCellAtOffset(thisCell, vec2(stepSize, 0));
+    thisCell = compareCellWithCellAtOffset(thisCell, vec2(stepSize, - stepSize));
+    thisCell = compareCellWithCellAtOffset(thisCell, vec2(0, - stepSize));
+    thisCell = compareCellWithCellAtOffset(thisCell, vec2(- stepSize, - stepSize));
+    thisCell = compareCellWithCellAtOffset(thisCell, vec2(- stepSize, 0));
+    thisCell = compareCellWithCellAtOffset(thisCell, vec2(- stepSize, stepSize));
+
+    gl_FragColor = thisCell;
+}
+
+// Fragment shader for drawing the result of the Jump Flood algorithm
+////////////////////////////////////////////////////////////////////////
+
+export void fDrawJumpFloodData() {
+    vec2 gridUv = gl_FragCoord.xy / iResolution;
+    vec4 object = texture2D(iInputTexture, gridUv);
+
+    if (cell_isValid(object)) {
+        vec2 gridUv = cell_closestSeed(object) / iResolution;
+        gridUv.y = 1. - gridUv.y;
+        gl_FragColor = texture2D(iSeedInputTexture, gridUv);
+    } else {
+        gl_FragColor = WHITE;
+    }
+}
+
+export void fDrawDistanceField() {
+    vec2 gridUv = gl_FragCoord.xy / iResolution;
+
+    if (!validUv(gridUv)) {
+        gl_FragColor = RED;
+        return;
+    }
+
+    vec4 object = texture2D(iInputTexture, gridUv);
+    vec2 seedLocation = cell_closestSeed(object);
+    float dist = torusDistance(seedLocation, gl_FragCoord.xy, iResolution);
+
+    // The 0.5 is made up. We just need to divide `dist` by
+    // some number bigger than its maximum possible size, and
+    // for our demos `iResolution.x / 0.5` works fine.
+    dist = 1.0 - (dist / (iResolution.x * 0.5));
+    gl_FragColor = vec4(dist, dist, dist, 1.0);
+}
+
+export void fDrawShadow() {
+    vec2 gridUv = gl_FragCoord.xy / iResolution;
+
+    if (!validUv(gridUv)) {
+        gl_FragColor = RED;
+        return;
+    }
+
+    vec4 object = texture2D(iInputTexture, gridUv);
+    vec2 seedLocation = cell_closestSeed(object);
+    float dist = distance(seedLocation, gl_FragCoord.xy);
+
+    float startFading = iShadowSpread - iShadowBlur / 2.0;
+    float stopFading = iShadowSpread + iShadowBlur / 2.0;
+
+    float mixValue = clamp((dist - startFading) / iShadowBlur, 0.0, 1.0);
+    gl_FragColor = mix(iShadowColor, vec4(0.0), mixValue);
+}
+
+// Just renders a texture to the screen.
+////////////////////////////////////////////////////////////////////////
+
+export void fRenderTexture() {
+    vec2 canvasSpaceUv = gl_FragCoord.xy / iResolution;
+    gl_FragColor = texture2D(iInputTexture, canvasSpaceUv);
+}

@@ -185,7 +185,7 @@ type Effector<T> = (write: Writer<T>, current: T) => Disposer<T> | void
 class Effect<T=any> {
   public value: T
   public _dispose: Disposer<T> | void = null
-  public _deps: any[] = []
+  public _deps: any[] = null
 
   constructor(
     public key: string,
@@ -197,7 +197,7 @@ class Effect<T=any> {
     this.cell.invalidate()
   }
 
-  update(effector: Effector<T>, deps: any[]=[]) {
+  update(effector: Effector<T>, deps?: any[]) {
     if (this.needsUpdate(deps)) {
       this.dispose()
       this._dispose = effector(this.write, this.value)
@@ -205,9 +205,10 @@ class Effect<T=any> {
     this._deps = deps
   }
 
-  needsUpdate(params: any[]) {
+  needsUpdate(params?: any[]) {
     const { _deps } = this
-    if (!_deps.length || !params.length) return true
+    if (!params) return true
+    if (params && !_deps) return true
     if (_deps.length !== params.length) return true
     let i = params.length; while (i --> 0) {
       if (_deps[i] !== params[i]) return true
@@ -253,7 +254,7 @@ export class Cell {
     return target
   }
 
-  public effect<T>(key: string, effector: Effector<T>, deps: any[]): T {
+  public effect<T>(key: string, effector: Effector<T>, deps?: any[]): T {
     const { effects } = this
     const existing = effects[key]
     if (!existing) {

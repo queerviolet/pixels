@@ -1,0 +1,44 @@
+{
+  "shaders": [
+    {
+      "name": "vCopyPosition",
+      "contents": "precision highp float;precision highp int;const vec4 RED=vec4(1.,0.,0.,1.),GREEN=vec4(0.,1.,0.,1.),BLUE=vec4(0.,0.,1.,1.),BLACK=vec4(0.,0.,0.,1.),WHITE=vec4(1.,1.,1.,1.);attribute vec2 quad;void main(){gl_Position=vec4(quad,0,1.);}"
+    },
+    {
+      "name": "fPrepForJFA",
+      "contents": "precision highp float;precision highp int;uniform sampler2D iSeedInputTexture;uniform vec2 iResolution;uniform vec4 iBackgroundColor;const vec4 RED=vec4(1.,0.,0.,1.),GREEN=vec4(0.,1.,0.,1.),BLUE=vec4(0.,0.,1.,1.),BLACK=vec4(0.,0.,0.,1.),WHITE=vec4(1.,1.,1.,1.);bool approxEqual(const vec4 a,const vec4 b){return all(lessThan(abs(a-b),vec4(5e-3)));}vec2 encodeScreenCoordinate(const float value_){float value=value_;return vec2(floor(value/100.),mod(value,100.));}vec4 createCell(const vec2 screenCoordinate_){vec2 screenCoordinate=floor(screenCoordinate_),rg=encodeScreenCoordinate(screenCoordinate.x),ba=encodeScreenCoordinate(screenCoordinate.y);return vec4(rg,ba)/255.;}vec4 createInvalidCell(){return createCell(vec2(5000.,5000.));}void main(){vec2 gridUv=gl_FragCoord.xy/iResolution,gridUvFlippedY=vec2(gridUv.x,1.-gridUv.y);vec4 pixel=texture2D(iSeedInputTexture,gridUvFlippedY);gl_FragColor=approxEqual(pixel,iBackgroundColor)?createInvalidCell():createCell(gl_FragCoord.xy);}"
+    },
+    {
+      "name": "fJumpFlood",
+      "contents": "precision highp float;precision highp int;uniform sampler2D iInputTexture;uniform vec2 iResolution;uniform int iStepSize;uniform bool iUseTorusDistanceForSeeds;const vec4 RED=vec4(1.,0.,0.,1.),GREEN=vec4(0.,1.,0.,1.),BLUE=vec4(0.,0.,1.,1.),BLACK=vec4(0.,0.,0.,1.),WHITE=vec4(1.,1.,1.,1.);bool between(const vec2 value,const vec2 bottom,const vec2 top){return all(greaterThan(value,bottom))&&all(lessThan(value,top));}bool validUv(const vec2 uv){return between(uv,vec2(0.,0.),vec2(1.,1.));}vec2 encodeScreenCoordinate(const float value_){float value=value_;return vec2(floor(value/100.),mod(value,100.));}float decodeScreenCoordinate(const vec2 channels){return channels.x*100.+channels.y;}vec4 createCell(const vec2 screenCoordinate_){vec2 screenCoordinate=floor(screenCoordinate_),rg=encodeScreenCoordinate(screenCoordinate.x),ba=encodeScreenCoordinate(screenCoordinate.y);return vec4(rg,ba)/255.;}vec4 createInvalidCell(){return createCell(vec2(5000.,5000.));}vec2 cell_closestSeed(const vec4 obj_){vec4 obj=obj_*255.;float x=decodeScreenCoordinate(obj.rg),y=decodeScreenCoordinate(obj.ba);return vec2(x,y)+vec2(.5);}bool cell_isValid(const vec4 obj){vec2 location=cell_closestSeed(obj);return location.x<4999.;}float torusDistance(vec2 a,vec2 b,vec2 torusSize){float firstPart=min(abs(a.x-b.x),torusSize.x-abs(a.x-b.x)),secondPart=min(abs(a.y-b.y),torusSize.y-abs(a.y-b.y));return sqrt(firstPart*firstPart+secondPart*secondPart);}vec4 compareCellWithCellAtOffset(const vec4 self,const vec2 offset){vec2 gridUv=(gl_FragCoord.xy+offset)/iResolution;vec4 otherCell=texture2D(iInputTexture,gridUv);otherCell=!validUv(gridUv)&&!iUseTorusDistanceForSeeds?createInvalidCell():otherCell;if(!cell_isValid(otherCell))return self;else if(!cell_isValid(self))return otherCell;else{vec2 selfSeedLocation=cell_closestSeed(self),otherSeedLocation=cell_closestSeed(otherCell);float selfSeedDist=iUseTorusDistanceForSeeds?torusDistance(selfSeedLocation,gl_FragCoord.xy,iResolution):distance(selfSeedLocation,gl_FragCoord.xy),otherSeedDist=iUseTorusDistanceForSeeds?torusDistance(otherSeedLocation,gl_FragCoord.xy,iResolution):distance(otherSeedLocation,gl_FragCoord.xy);if(selfSeedDist>otherSeedDist)return otherCell;}return self;}void main(){vec2 gridUv=gl_FragCoord.xy/iResolution;vec4 thisCell=texture2D(iInputTexture,gridUv);int stepSize=iStepSize;thisCell=compareCellWithCellAtOffset(thisCell,vec2(0,stepSize)),thisCell=compareCellWithCellAtOffset(thisCell,vec2(stepSize,stepSize)),thisCell=compareCellWithCellAtOffset(thisCell,vec2(stepSize,0)),thisCell=compareCellWithCellAtOffset(thisCell,vec2(stepSize,-stepSize)),thisCell=compareCellWithCellAtOffset(thisCell,vec2(0,-stepSize)),thisCell=compareCellWithCellAtOffset(thisCell,vec2(-stepSize,-stepSize)),thisCell=compareCellWithCellAtOffset(thisCell,vec2(-stepSize,0)),thisCell=compareCellWithCellAtOffset(thisCell,vec2(-stepSize,stepSize)),gl_FragColor=thisCell;}"
+    },
+    {
+      "name": "fDrawJumpFloodData",
+      "contents": "precision highp float;precision highp int;uniform sampler2D iSeedInputTexture,iInputTexture;uniform vec2 iResolution;const vec4 RED=vec4(1.,0.,0.,1.),GREEN=vec4(0.,1.,0.,1.),BLUE=vec4(0.,0.,1.,1.),BLACK=vec4(0.,0.,0.,1.),WHITE=vec4(1.,1.,1.,1.);float decodeScreenCoordinate(const vec2 channels){return channels.x*100.+channels.y;}vec2 cell_closestSeed(const vec4 obj_){vec4 obj=obj_*255.;float x=decodeScreenCoordinate(obj.rg),y=decodeScreenCoordinate(obj.ba);return vec2(x,y)+vec2(.5);}bool cell_isValid(const vec4 obj){vec2 location=cell_closestSeed(obj);return location.x<4999.;}void main(){vec2 gridUv=gl_FragCoord.xy/iResolution;vec4 object=texture2D(iInputTexture,gridUv);if(cell_isValid(object)){vec2 gridUv=cell_closestSeed(object)/iResolution;gridUv.y=1.-gridUv.y,gl_FragColor=texture2D(iSeedInputTexture,gridUv);}else gl_FragColor=WHITE;}"
+    },
+    {
+      "name": "fDrawDistanceField",
+      "contents": "precision highp float;precision highp int;uniform sampler2D iInputTexture;uniform vec2 iResolution;const vec4 RED=vec4(1.,0.,0.,1.),GREEN=vec4(0.,1.,0.,1.),BLUE=vec4(0.,0.,1.,1.),BLACK=vec4(0.,0.,0.,1.),WHITE=vec4(1.,1.,1.,1.);bool between(const vec2 value,const vec2 bottom,const vec2 top){return all(greaterThan(value,bottom))&&all(lessThan(value,top));}bool validUv(const vec2 uv){return between(uv,vec2(0.,0.),vec2(1.,1.));}float decodeScreenCoordinate(const vec2 channels){return channels.x*100.+channels.y;}vec2 cell_closestSeed(const vec4 obj_){vec4 obj=obj_*255.;float x=decodeScreenCoordinate(obj.rg),y=decodeScreenCoordinate(obj.ba);return vec2(x,y)+vec2(.5);}float torusDistance(vec2 a,vec2 b,vec2 torusSize){float firstPart=min(abs(a.x-b.x),torusSize.x-abs(a.x-b.x)),secondPart=min(abs(a.y-b.y),torusSize.y-abs(a.y-b.y));return sqrt(firstPart*firstPart+secondPart*secondPart);}void main(){vec2 gridUv=gl_FragCoord.xy/iResolution;if(!validUv(gridUv)){gl_FragColor=RED;return;}vec4 object=texture2D(iInputTexture,gridUv);vec2 seedLocation=cell_closestSeed(object);float dist=torusDistance(seedLocation,gl_FragCoord.xy,iResolution);dist=1.-dist/(iResolution.x*.5),gl_FragColor=vec4(dist,dist,dist,1.);}"
+    },
+    {
+      "name": "fDrawShadow",
+      "contents": "precision highp float;precision highp int;uniform sampler2D iInputTexture;uniform vec2 iResolution;uniform float iShadowSpread,iShadowBlur;uniform vec4 iShadowColor;const vec4 RED=vec4(1.,0.,0.,1.),GREEN=vec4(0.,1.,0.,1.),BLUE=vec4(0.,0.,1.,1.),BLACK=vec4(0.,0.,0.,1.),WHITE=vec4(1.,1.,1.,1.);bool between(const vec2 value,const vec2 bottom,const vec2 top){return all(greaterThan(value,bottom))&&all(lessThan(value,top));}bool validUv(const vec2 uv){return between(uv,vec2(0.,0.),vec2(1.,1.));}float decodeScreenCoordinate(const vec2 channels){return channels.x*100.+channels.y;}vec2 cell_closestSeed(const vec4 obj_){vec4 obj=obj_*255.;float x=decodeScreenCoordinate(obj.rg),y=decodeScreenCoordinate(obj.ba);return vec2(x,y)+vec2(.5);}void main(){vec2 gridUv=gl_FragCoord.xy/iResolution;if(!validUv(gridUv)){gl_FragColor=RED;return;}vec4 object=texture2D(iInputTexture,gridUv);vec2 seedLocation=cell_closestSeed(object);float dist=distance(seedLocation,gl_FragCoord.xy),startFading=iShadowSpread-iShadowBlur/2.,mixValue=clamp((dist-startFading)/iShadowBlur,0.,1.);gl_FragColor=mix(iShadowColor,vec4(0.),mixValue);}"
+    },
+    {
+      "name": "fRenderTexture",
+      "contents": "precision highp float;precision highp int;uniform sampler2D iInputTexture;uniform vec2 iResolution;const vec4 RED=vec4(1.,0.,0.,1.),GREEN=vec4(0.,1.,0.,1.),BLUE=vec4(0.,0.,1.,1.),BLACK=vec4(0.,0.,0.,1.),WHITE=vec4(1.,1.,1.,1.);void main(){vec2 canvasSpaceUv=gl_FragCoord.xy/iResolution;gl_FragColor=texture2D(iInputTexture,canvasSpaceUv);}"
+    }
+  ],
+  "renaming": {
+    "iResolution": "iResolution",
+    "iInputTexture": "iInputTexture",
+    "iSeedInputTexture": "iSeedInputTexture",
+    "iUseTorusDistanceForSeeds": "iUseTorusDistanceForSeeds",
+    "iShadowBlur": "iShadowBlur",
+    "iBackgroundColor": "iBackgroundColor",
+    "iStepSize": "iStepSize",
+    "iShadowSpread": "iShadowSpread",
+    "quad": "quad",
+    "iShadowColor": "iShadowColor"
+  }
+}
