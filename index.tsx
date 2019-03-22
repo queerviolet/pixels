@@ -440,18 +440,19 @@ const lumaLoop = new Luma.AnimationLoop({
                 void main() {
                   vec4 self = texture2D(uInput, vec2(vPosition));
                   gl_FragColor = self;
-                  for (int dx = -1; dx <= 1; ++dx) {
-                    for (int dy = -1; dy <= 1; ++dy) {
-                      vec4 val = texture2D(uInput, vec2(vPosition) + vec2(uStep * float(dx), uStep * float(dy)));
-                      if (val.a <= self.a) {
+                  for (float dx = -1.0; dx <= 1.0; ++dx) {
+                    for (float dy = -1.0; dy <= 1.0; ++dy) {
+                      vec4 val = texture2D(uInput,
+                        vec2(vPosition) + vec2(
+                          uStep * dx,
+                          uStep * dy
+                        )
+                      );
+                      if (val.a < self.a) {
                         gl_FragColor = vec4(val.rgb, val.a + 0.01);
                       }
                     }
-                  }
-                  
-
-                  // gl_FragColor = vec4(texture2D(uInput, vec2(vPosition)).rgb, 0.01);
-                  // gl_FragColor.b = gl_FragColor.b * 1.1;
+                  }                  
                 }
                 `,
               }))
@@ -469,7 +470,7 @@ const lumaLoop = new Luma.AnimationLoop({
                 framebuffer: dst,
                 uniforms: {
                   uInput: src.color,
-                  uStep: 0.01,
+                  uStep: 0.001,
                 }
               })
 
