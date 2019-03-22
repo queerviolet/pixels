@@ -117,6 +117,8 @@ type WithCol = {
 
 const DTYPES: { [key: string]: dtype }= { float, vec2 }
 
+import { vertexArrayBuffer, textureBuffer, queueBuffer } from './buffer-peer'
+
 function VertexArrayBuffer(props: WithCol, cell?: Cell) {
   if (!cell) return Seed(VertexArrayBuffer, props)
   const gl = cell.read(GLContext)
@@ -133,7 +135,7 @@ function VertexArrayBuffer(props: WithCol, cell?: Cell) {
       unsubscribe()
       stream && stream.clear()
     }
-  }, [props.node, props.column, props.dtype])
+  }, [props.node, props.column.join('.'), props.dtype])
 }
 
 function TextureBuffer(props: WithCol, cell?: Cell) {
@@ -152,9 +154,29 @@ function TextureBuffer(props: WithCol, cell?: Cell) {
       unsubscribe()
       stream && stream.clear()
     }
-  }, [props.node, props.column, props.dtype])
+  }, [props.node, props.column.join('.'), props.dtype])
 }
-import { vertexArrayBuffer, textureBuffer } from './buffer-peer'
+
+function QueueBuffer(props: WithCol, cell?: Cell) {
+  if (!cell) return Seed(QueueBuffer, props)
+  const client = cell.read(DataContext)
+  const dtype = DTYPES[props.dtype]
+  return cell.effect<typeof dtype.ArrayType[]>('queue-buffer', _ => {
+    const listener = queueBuffer(props.node, props.column, dtype)
+    const unsubscribe = listener.onChange(stream => {
+      stream.clear = listener.clear
+      _(stream)
+    })
+    const disconnect = client.connect(listener, 'Texture Buffer')
+
+    return () => {
+      disconnect()
+      unsubscribe()
+      listener && listener.clear()
+    }
+  }, [props.node, props.column.join('.'), props.dtype])
+}
+
 import defaultClient from './parcel-plugin-writable/src/client'
 
 const lumaLoop = new Luma.AnimationLoop({
@@ -174,125 +196,152 @@ const lumaLoop = new Luma.AnimationLoop({
     console.log('OES_texture_float:', gl.getExtension('OES_texture_float'))
 
     render(
-        <GLContext.Provider value={gl}>
-          <Loop loop={loop}>
-            <Eval>{
-              (_, cell) => {
-                const gl = cell.read(GLContext)
-                if (!gl) return
-                cell.read(RecordStroke({ node: 'stylus' }))
+      <GLContext.Provider value={gl}>
+        <Loop loop={loop}>
+          <Eval>{
+            (_, cell) => {
+              const gl = cell.read(GLContext)
+              if (!gl) return
+              cell.read(RecordStroke({ node: 'stylus' }))
+
+              const posQueue = QueueBuffer({ node: 'stylus', column: ['pos'], dtype: 'vec2' }, cell)
+          
+              const { program, vertexArray } = cell.read(Shader({
+                vs: `
+                  attribute vec2 pos;
+                  attribute float force;
+                  uniform mat4 uProjection;
+                  varying float vForce;
+          
+                  void main() {
+                    gl_Position = uProjection * vec4(pos.x, pos.y, 0.0, 1.0);
+                    gl_PointSize = 5.0 * force * 7.0;
+                    vForce = force;
+                  }
+                `,
+                fs: `
+                  precision highp float;
+                  varying float vForce;
+          
+                  void main() {
+                    gl_FragColor = vec4(1.0, 0.0, 1.0, 0.5 + vForce);
+                  }
+                `
+              })) || ({} as any)
+              if (!program) return
+
+              const pos = cell.read(VertexArrayBuffer({ node: 'stylus', column: ['pos'], dtype: 'vec2' }))
+              const force = cell.read(VertexArrayBuffer({ node: 'stylus', column: ['force'], dtype: 'float' }))
+
+              if (!pos || !force) return
             
-                const { program, vertexArray } = cell.read(Shader({
+              const vertexCount = pos.count
+              if (!vertexCount) return
+
+              vertexArray.setAttributes({
+                pos: pos.buffer,
+                force: force.buffer,
+              })
+
+              const uProjection = new Matrix4().ortho({
+                top: -9,
+                bottom: 9,
+                left: -16,
+                right: 16, 
+                near: -1, far: 1000
+              })
+              
+              program.setUniforms({ uProjection })
+
+              // gl.clearColor(0.0, 0.0, 0.0, 1.0)
+              // gl.clear(GL.COLOR_BUFFER_BIT)
+
+              const cone = cell.effect<Luma.Cone>('cones', _ => {                  
+                console.log('creating cone')
+                _(new Luma.Cone(gl, {
+                  radius: 10,
+                  height: 3,
+                  cap: true,
+                  colors: [1, 1, 1, 1],
+                  position: [ 0, 0, 1 ],
+                  // isInstanced: 1,
+                  // instanceCount: vertexCount,
+                  attributes: {
+                    pos
+                  },
                   vs: `
-                    attribute vec2 pos;
-                    attribute float force;
+                    uniform vec2 uPos;
+                    // attribute float force;
+                    attribute vec3 positions;
                     uniform mat4 uProjection;
-                    varying float vForce;
+                    uniform mat4 uModel;                    
+                    // varying float vForce;
+                    varying vec3 vPosition;
             
                     void main() {
-                      gl_Position = uProjection * vec4(pos.x, pos.y, 0.0, 1.0);
-                      gl_PointSize = 5.0 * force * 7.0;
-                      vForce = force;
-                    }
-                  `,
+                      vec4 ownPos = uModel * vec4(positions, 1.0) + vec4(uPos, 0., 0.);
+                      gl_Position = uProjection * ownPos;//vec4(pos.x, pos.y, 0.0, 1.0);
+                      vPosition = positions;
+                      // gl_PointSize = 5.0 * force * 7.0;
+                      // vForce = force;
+                    }`,
                   fs: `
                     precision highp float;
-                    varying float vForce;
+                    // varying float vForce;
+                    varying vec3 vPosition;
             
                     void main() {
-                      gl_FragColor = vec4(1.0, 0.0, 1.0, 0.5 + vForce);
-                    }
-                  `
-                })) || ({} as any)
-                if (!program) return
+                      // gl_FragColor = vec4(1.0, 0.0, 1.0, 0.5 + vForce);
+                      // gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+                      gl_FragColor = vec4(vPosition.xy, 1.0, 1.0);
+                    }`,
+                }))
+                return cone => cone.delete()
+              }, [ gl ])
 
-                const pos = cell.read(VertexArrayBuffer({ node: 'stylus', column: ['pos'], dtype: 'vec2' }))
-                const force = cell.read(VertexArrayBuffer({ node: 'stylus', column: ['force'], dtype: 'float' }))
+              // if (cone) {
+              //   console.log(cone);
+              //   cone.isInstanced = 1
+              //   cone.setInstanceCount(vertexCount)
+              //   console.log(vertexCount, cone.props.instanceCount)
+              //   cone.draw({
+              //     uniforms: {
+              //       uProjection,
+              //       uModel: new Matrix4()
+              //         .rotateX(-Math.PI / 2)
+              //     }
+              //   })
+              // }
 
-                if (!pos || !force) return
-              
-                const vertexCount = pos.count
-                if (!vertexCount) return
-
-                vertexArray.setAttributes({
-                  pos: pos.buffer,
-                  force: force.buffer,
-                })
-
-                const uProjection = new Matrix4().ortho({
-                  top: -9,
-                  bottom: 9,
-                  left: -16,
-                  right: 16, 
-                  near: -1, far: 1000
-                })
-                
-                program.setUniforms({ uProjection })
-
-                gl.clearColor(0.0, 0.0, 0.0, 1.0)
-                gl.clear(GL.COLOR_BUFFER_BIT)
-
-                const cone = cell.effect<Luma.Cone>('cones', _ => {
-                  _(new Luma.Cone(gl, {
-                    radius: 10,
-                    height: 3,
-                    cap: true,
-                    colors: [1, 1, 1, 1],
-                    position: [ 0, 0, 1 ],
-                    vs: `
-                      // attribute vec2 pos;
-                      // attribute float force;
-                      attribute vec3 positions;
-                      uniform mat4 uProjection;
-                      uniform mat4 uModel;
-                      // varying float vForce;
-                      varying vec3 vPosition;
-              
-                      void main() {
-                        gl_Position = uProjection * uModel * vec4(positions, 1.0);//vec4(pos.x, pos.y, 0.0, 1.0);
-                        vPosition = positions;
-                        // gl_PointSize = 5.0 * force * 7.0;
-                        // vForce = force;
-                      }`,
-                    fs: `
-                      precision highp float;
-                      // varying float vForce;
-                      varying vec3 vPosition;
-              
-                      void main() {
-                        // gl_FragColor = vec4(1.0, 0.0, 1.0, 0.5 + vForce);
-                        // gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
-                        gl_FragColor = vec4(vPosition.xy, 1.0, 1.0);
-                      }`,
-                  }))
-                  return cone => cone.delete()
-                }, [gl])
-
-                if (cone) {
-                  console.log(cone.geometry);
+              if (cone && posQueue.length) {
+                const uModel = new Matrix4().rotateX(-Math.PI / 2)
+                let i = posQueue.length; while (i --> 0) {
+                  const uPos = posQueue[i]
                   cone.draw({
                     uniforms: {
                       uProjection,
-                      uModel: new Matrix4()
-                        .rotateX(-Math.PI / 2)
+                      uModel,
+                      uPos
                     }
-                  })
+                  })                  
                 }
-            
-                const draw = () => program.draw({
-                  vertexArray,
-                  vertexCount,
-                  drawMode: GL.POINTS,
-                })
-            
-                Luma.withParameters(gl, {
-                  [GL.BLEND]: true,
-                  blendFunc: [GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA]
-                }, draw)
+                posQueue.clear()
               }
-            }</Eval>
-          </Loop>
-        </GLContext.Provider>,
+          
+              const draw = () => program.draw({
+                vertexArray,
+                vertexCount,
+                drawMode: GL.POINTS,
+              })
+          
+              Luma.withParameters(gl, {
+                [GL.BLEND]: true,
+                blendFunc: [GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA]
+              }, draw)
+            }
+          }</Eval>
+        </Loop>
+      </GLContext.Provider>,
       document.getElementById('main'))
 
     canvas.style = ''

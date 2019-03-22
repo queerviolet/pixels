@@ -5,13 +5,14 @@ import { Descriptor, dtype } from 'parcel-plugin-writable/src/struct'
 import { Message, Location } from './parcel-plugin-writable/src/message'
 import { Node } from './parcel-plugin-writable/src/node'
 import { Stream } from './buffer'
-import { append } from 'parcel-plugin-writable/client';
+import { append, clear } from 'parcel-plugin-writable/client';
 import { join } from 'path'
 import { getPath, getLocation } from 'parcel-plugin-writable/src/node';
 
 
 type DataBuffers<B> = PeerMethods & {
   onChange: Event<B>
+  clear(): void
 }
 
 interface BufferOps<B> {
@@ -43,7 +44,7 @@ export const createBufferPeer = <B>(node: string, column: string[], dtype: dtype
         emit(msg)
       }, 10)
 
-      return { send, onChange }
+      return { send, onChange, clear() { clear(buffer) } }
     
       function send(msg: Message, data?: Data) {
         if (msg.type === 'data...') {
@@ -58,7 +59,7 @@ export const createBufferPeer = <B>(node: string, column: string[], dtype: dtype
           didChange(buffer)
           return
         }
-      }
+      }      
     }
   )
 }
@@ -101,4 +102,25 @@ export const textureBuffer = (gl: any, node: string, column: string[], dtype: dt
     }
   }
   return createBufferPeer<TextureDataStream>(node, column, dtype, ops)
+}
+
+
+export const queueBuffer = <D extends dtype, A extends (D["ArrayType"][]) = D["ArrayType"][]>(node: string, column: string[], dtype: D) => {
+  const ops: BufferOps<A> = {
+    alloc(column: dtype) {
+      return [] as A
+    },
+
+    append(stream: A, data: Data) {
+      data = ArrayBuffer.isView(data) ? data.buffer : data
+      for (let offset = 0; offset < data.byteLength; offset += dtype.byteLength) {        
+        stream.push(new Float32Array(data.slice(offset, offset + dtype.byteLength)))
+      }
+    },
+
+    clear(stream: A) {
+      stream.splice(0, stream.length)
+    }
+  }
+  return createBufferPeer<A>(node, column, dtype, ops)
 }
