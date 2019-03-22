@@ -316,7 +316,7 @@ const lumaLoop = new Luma.AnimationLoop({
               const cone = cell.effect<Luma.Cone>('cones', _ => {                  
                 console.log('creating cone')
                 _(new Luma.Cone(gl, {
-                  radius: 0.1,
+                  radius: 0.05,
                   height: 1,
                   cap: true,
                   // isInstanced: 1,
@@ -449,7 +449,7 @@ const lumaLoop = new Luma.AnimationLoop({
                         )
                       );
                       if (val.a < self.a) {
-                        gl_FragColor = vec4(val.rgb, val.a + 0.01);
+                        gl_FragColor = vec4(val.rgb, val.a + length(vec2(dx, dy)) / 500.0);
                       }
                     }
                   }                  
@@ -458,6 +458,8 @@ const lumaLoop = new Luma.AnimationLoop({
               }))
 
               if (!bleed) return
+
+              cell.read(Clock)
 
               bleed.vertexArray.setAttributes({
                 aPosition: stageVerts
