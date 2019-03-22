@@ -1,6 +1,6 @@
 import hot from './hot'
 import './stage'
-import { GLContext, DataContext } from './contexts'
+import { GLContext, DataContext, Clock } from './contexts'
 import { QueueBuffer, VertexArrayBuffer } from './buffers'
 import { Seed, Cell } from './loop'
 
@@ -19,11 +19,10 @@ import Loop, { Eval, createLoop, isContext } from './loop'
 import headshot from './ashi-headshot-02.jpg'
 const QUAD_VERTS = new Float32Array([1, 1, 0, -1, 1, 0, 1, -1, 0, -1, -1, 0])
 
-const Clock = React.createContext(0)
-
 import RecordStroke from './record-stroke'
 import ImageTexture from './image-texture'
 import Shader from './shader'
+import Swapper from './swapper'
 
 import defaultClient from './parcel-plugin-writable/src/client'
 
@@ -63,7 +62,10 @@ const lumaLoop = new Luma.AnimationLoop({
             (_, cell) => {
               const gl = cell.read(GLContext)
               if (!gl) return
-              
+
+              const { src, dst } = cell.read(Swapper()) || ({} as any)
+              if (!src || !dst) return
+
               cell.read(RecordStroke({ node: 'stylus' }))
               const img = cell.read(ImageTexture({ src: headshot }))
 
@@ -120,7 +122,6 @@ const lumaLoop = new Luma.AnimationLoop({
                 uImage: img
               })
 
-
               const cone = cell.effect<Luma.Cone>('cones', _ => {                  
                 _(new Luma.Cone(gl, {
                   radius: 0.5,
@@ -132,10 +133,8 @@ const lumaLoop = new Luma.AnimationLoop({
                   vs: `
                     uniform vec2 uPos;
                     uniform float uForce;
-                    // attribute float force;
                     attribute vec3 positions;
                     uniform mat4 uProjection;
-                    // varying float vForce;
                     varying vec4 vPosition;
             
                     void main() {
@@ -146,7 +145,6 @@ const lumaLoop = new Luma.AnimationLoop({
                   fs: `
                     uniform vec2 uPos;
                     precision highp float;
-                    // varying float vForce;
                     varying vec4 vPosition;
                     uniform sampler2D uImage;
             
@@ -157,42 +155,6 @@ const lumaLoop = new Luma.AnimationLoop({
                 }))
                 return cone => cone.delete()
               }, [ gl ])
-
-              const offscreenA = cell.effect<Luma.Framebuffer>('framebuffer-A', _ => {
-                const width = gl.drawingBufferWidth
-                const height = gl.drawingBufferHeight
-                const framebuffer = new Luma.Framebuffer(gl, {
-                  id: 'framebuffer-A',
-                  width, height, depth: true,
-                })
-                framebuffer.checkStatus()
-                framebuffer.clear({color: [0, 0, 0, 100], depth: 1, stencil: 0})
-                _(framebuffer)
-                return () => {
-                  framebuffer._deleteHandle()
-                }
-              }, [gl, gl.drawingBufferWidth, gl.drawingBufferHeight])
-
-              const offscreenB = cell.effect<Luma.Framebuffer>('framebuffer-B', _ => {
-                const width = gl.drawingBufferWidth
-                const height = gl.drawingBufferHeight
-                const framebuffer = new Luma.Framebuffer(gl, {
-                  id: 'framebuffer-B',
-                  width, height, depth: true,
-                })
-                framebuffer.checkStatus()
-                framebuffer.clear({color: [0, 0, 0, 100], depth: 1, stencil: 0})
-                _(framebuffer)
-                return () => {
-                  framebuffer._deleteHandle()
-                }
-              }, [gl, gl.drawingBufferWidth, gl.drawingBufferHeight])
-
-              const ticktock = cell.effect<{ tick: boolean }>('ticktock', _ => _({ tick: false }), [])
-              ticktock.tick = !ticktock.tick;              
-              const [src, dst] = ticktock.tick
-                ? [offscreenA, offscreenB]
-                : [offscreenB, offscreenA]
 
               if (img && cone && posQueue && forceQueue && posQueue.length && forceQueue.length) {
                 let batch = Math.min(100, posQueue.length, forceQueue.length)
@@ -210,7 +172,7 @@ const lumaLoop = new Luma.AnimationLoop({
                   })
                 }
               }
-              
+
               const stageVerts = cell.read('Stage.aPosition')
 
               const bleed = cell.read(Shader({
@@ -259,8 +221,6 @@ const lumaLoop = new Luma.AnimationLoop({
               }))
 
               if (!bleed) return
-
-              cell.read(Clock)
 
               bleed.vertexArray.setAttributes({
                 aPosition: stageVerts
