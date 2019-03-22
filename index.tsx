@@ -18,8 +18,6 @@ const STAGE_QUAD = [
 ]
 const QUAD_VERTS = new Float32Array([1, 1, 0, -1, 1, 0, 1, -1, 0, -1, -1, 0])
 
-const global = window as any
-
 const frameCoordsFrom = ({
   clientX, clientY,
 }) =>
@@ -114,33 +112,7 @@ function Shader(props: WithShaderSource, cell?: Cell) {
 
 const Clock = React.createContext(0)
 
-
-
-function ImageTexture(props: { src: string }, cell?: Cell) {
-  if (!cell) return Seed(ImageTexture, props)
-  const { src } = props
-  const img = cell.effect('load-image', _ => {
-    const img = new Image()
-    img.onload = () => _(img)
-    img.src = src
-  }, [src])
-  if (!img) return
-  const gl = cell.read(GLContext)
-  return cell.effect<Luma.Texture2D>('create-texture', _ => {
-    _(new Luma.Texture2D(gl, {
-      data: img,
-      parameters: {
-        [GL.TEXTURE_MAG_FILTER]: GL.NEAREST,
-        [GL.TEXTURE_MIN_FILTER]: GL.NEAREST
-      },
-      pixelStore: {
-        [GL.UNPACK_FLIP_Y_WEBGL]: false,
-      },
-      mipmaps: true
-    }))
-    return tex => tex.delete()
-  }, [img])
-}
+import ImageTexture from './image-texture'
 
 import defaultClient from './parcel-plugin-writable/src/client'
 
