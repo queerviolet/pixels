@@ -160,6 +160,12 @@ import defaultClient from './parcel-plugin-writable/src/client'
 const lumaLoop = new Luma.AnimationLoop({
   useDevicePixels: true,
   onInitialize({ gl, canvas }) {
+    Luma.setParameters(gl, {
+      clearColor: [0, 0, 0, 1],
+      clearDepth: 0,
+      depthTest: true,
+      depthFunc: GL.LEQUAL,
+    })
     const loop = createLoop()
     ;(window as any).loop = loop
 
@@ -213,15 +219,65 @@ const lumaLoop = new Luma.AnimationLoop({
                   force: force.buffer,
                 })
 
-                program.setUniforms({
-                  uProjection: new Matrix4().ortho({
-                    top: -9,
-                    bottom: 9,
-                    left: -16,
-                    right: 16, 
-                    near: -1, far: 1000
-                  })
+                const uProjection = new Matrix4().ortho({
+                  top: -9,
+                  bottom: 9,
+                  left: -16,
+                  right: 16, 
+                  near: -1, far: 1000
                 })
+                
+                program.setUniforms({ uProjection })
+
+                gl.clearColor(0.0, 0.0, 0.0, 1.0)
+                gl.clear(GL.COLOR_BUFFER_BIT)
+
+                const cone = cell.effect<Luma.Cone>('cones', _ => {
+                  _(new Luma.Cone(gl, {
+                    radius: 10,
+                    height: 3,
+                    cap: true,
+                    colors: [1, 1, 1, 1],
+                    position: [ 0, 0, 1 ],
+                    vs: `
+                      // attribute vec2 pos;
+                      // attribute float force;
+                      attribute vec3 positions;
+                      uniform mat4 uProjection;
+                      uniform mat4 uModel;
+                      // varying float vForce;
+                      varying vec3 vPosition;
+              
+                      void main() {
+                        gl_Position = uProjection * uModel * vec4(positions, 1.0);//vec4(pos.x, pos.y, 0.0, 1.0);
+                        vPosition = positions;
+                        // gl_PointSize = 5.0 * force * 7.0;
+                        // vForce = force;
+                      }`,
+                    fs: `
+                      precision highp float;
+                      // varying float vForce;
+                      varying vec3 vPosition;
+              
+                      void main() {
+                        // gl_FragColor = vec4(1.0, 0.0, 1.0, 0.5 + vForce);
+                        // gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+                        gl_FragColor = vec4(vPosition.xy, 1.0, 1.0);
+                      }`,
+                  }))
+                  return cone => cone.delete()
+                }, [gl])
+
+                if (cone) {
+                  console.log(cone.geometry);
+                  cone.draw({
+                    uniforms: {
+                      uProjection,
+                      uModel: new Matrix4()
+                        .rotateX(-Math.PI / 2)
+                    }
+                  })
+                }
             
                 const draw = () => program.draw({
                   vertexArray,
@@ -229,8 +285,6 @@ const lumaLoop = new Luma.AnimationLoop({
                   drawMode: GL.POINTS,
                 })
             
-                gl.clearColor(0.0, 0.0, 0.0, 1.0)
-                gl.clear(GL.COLOR_BUFFER_BIT)
                 Luma.withParameters(gl, {
                   [GL.BLEND]: true,
                   blendFunc: [GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA]
@@ -258,6 +312,7 @@ console.log(GLContext, isContext(GLContext))
 
 lumaLoop.start()
 import hot from './hot'
+import { gt } from 'semver';
 
 hot(module).onDispose(() => {
   lumaLoop.stop()
