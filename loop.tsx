@@ -111,6 +111,7 @@ export function createLoop(): CellContext {
   }
 
   function run(now=performance.now()) {
+    console.log(cells)
     const deferred = new Set<Cell>()
     while (dirty.size) {      
       const cells = new Set<Cell>(dirty.values())
@@ -266,7 +267,7 @@ export class Cell {
 
   private outputs: { [key: string]: Cell } = {}
 
-  public read(pattern: any): any {    
+  public read(pattern: any): any {
     return this.get(pattern).value
   }
 
@@ -320,6 +321,7 @@ const asKey = (key: any) =>
 const tagMap = new WeakMap<any, string>()
 const tag = (key: any): string => {
   if (typeof key === 'string') return JSON.stringify(key)
+  if (key instanceof Pattern) return key.key
   if (key === null) return 'null'
   if (key === undefined) return 'undefined'
   if (typeof key === 'symbol') {

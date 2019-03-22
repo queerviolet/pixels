@@ -1,5 +1,5 @@
 import { Cone } from 'luma.gl'
-import { GLContext, Camera } from './contexts'
+import { GLContext, Camera, Clock } from './contexts'
 import { Cell, Seed } from './loop'
 import { QueueBuffer } from './buffers'
 
@@ -70,5 +70,6 @@ export default function PaintStroke(props: PaintStrokeProps, cell?: Cell) {
         framebuffer: props.framebuffer,
       })
     }
+    if (pos.length || force.length) cell.read(Clock)
   }
 }
