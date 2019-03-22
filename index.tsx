@@ -56,7 +56,6 @@ const lumaLoop = new Luma.AnimationLoop({
     loop('Stage.aPosition').write(new Luma.Buffer(gl, QUAD_VERTS))
 
     render(
-      <GLContext.Provider value={gl}>
         <Loop loop={loop}>
           <Eval>{
             (_, cell) => {
@@ -69,8 +68,8 @@ const lumaLoop = new Luma.AnimationLoop({
               cell.read(RecordStroke({ node: 'stylus' }))
               const img = cell.read(ImageTexture({ src: headshot }))
 
-              const posQueue = cell.read(QueueBuffer({ node: 'stylus', column: ['pos'], dtype: 'vec2' }))
-              const forceQueue = cell.read(QueueBuffer({ node: 'stylus', column: ['force'], dtype: 'float' }))
+              const posQueue = cell.read(QueueBuffer({ data: 'stylus/pos.vec2' }))
+              const forceQueue = cell.read(QueueBuffer({ data: 'stylus/force.float' }))
           
               const { program, vertexArray } = cell.read(Shader({
                 vs: `
@@ -103,8 +102,8 @@ const lumaLoop = new Luma.AnimationLoop({
               })) || ({} as any)
               if (!program) return
 
-              const pos = cell.read(VertexArrayBuffer({ node: 'stylus', column: ['pos'], dtype: 'vec2' }))
-              const force = cell.read(VertexArrayBuffer({ node: 'stylus', column: ['force'], dtype: 'float' }))
+              const pos = cell.read(VertexArrayBuffer({ data: 'stylus/pos.vec2' }))
+              const force = cell.read(VertexArrayBuffer({ data: 'stylus/force.float' }))
 
               if (!pos || !force) return
             
@@ -284,8 +283,7 @@ const lumaLoop = new Luma.AnimationLoop({
               // }, draw)
             }
           }</Eval>
-        </Loop>
-      </GLContext.Provider>,
+        </Loop>,
       document.getElementById('main'))
 
     canvas.style = ''

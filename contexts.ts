@@ -1,5 +1,3 @@
-import { createContext } from 'react'
-
-export const GLContext = createContext(null)
-export const DataContext = createContext(null)
-export const Clock = createContext(0)
+export const GLContext = 'GL.Context'
+export const DataContext = 'Data.Client'
+export const Clock = 'tick, tock goes the clock'

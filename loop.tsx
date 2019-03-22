@@ -1,19 +1,27 @@
 import * as React from 'react'
-const { useState, useRef, useEffect, useContext, useMemo, isValidElement } = React
+const { useState, useEffect, useContext } = React
 
-import { ReactComponentLike, symbol, bool } from 'prop-types';
-import { forwardRef, MutableRefObject } from 'react'
+import { ReactComponentLike } from 'prop-types'
 import createEvent, { Event, Emitter } from './event'
 
 const Context = React.createContext<CellContext>(null)
 
-type Pattern = {
-  evaluator: Evaluator
-  props: any
+export class Pattern {
+  constructor(public readonly evaluator, public readonly props) {}
+
+  get key(): string {    
+    const props = this.props || {}
+    const propStr = Object.entries(props).map(
+      ([k, v]) => tag(k) + ':' + tag(v)
+    ).join(', ')
+    const value = `${tag(this.evaluator)}(${propStr})`
+    Object.defineProperty(this, 'key', { value })
+    return value
+  }
 }
-export const Seed = (evaluator: Evaluator, props: any) => ({
-  evaluator, props
-})
+
+export const Seed = (evaluator: Evaluator, props: any) =>
+  new Pattern(evaluator, props)
 
 interface CellContext {
   (pattern: any, evaluator?: Evaluator): Cell
@@ -299,7 +307,24 @@ const asKey = (key: any) =>
   typeof key === 'string'
     ? key    
     :
+  key instanceof Pattern
+    ?
+  key.key
+    :
   asKeyPart(key)
+
+
+const tag = (key: any): string => {
+  if (typeof key === 'string') return JSON.stringify(key)
+  if (typeof key === 'symbol') {
+    if (!symMap.has(key))
+      symMap.set(key, `[${nextId++}/${String(key)}]`)
+    return symMap.get(key)
+  }  
+  if (key[REPR]) return key[REPR]
+  return key[REPR] = `[${nextId++}/${typeof key}(${key.displayName || key.name})]`
+}
+  
    
 const asKeyPart = (part: any) =>
   typeof part === 'symbol' || typeof part === 'function'

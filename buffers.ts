@@ -1,8 +1,6 @@
 
-type WithCol = {
-  node: string
-  column: string[]
-  dtype: string
+type WithData = {
+  data: string
 }
 
 const DTYPES: { [key: string]: dtype }= { float, vec2 }
@@ -13,12 +11,29 @@ import { Seed, Cell } from './loop'
 import { dtype, float, vec2 } from 'parcel-plugin-writable/src/struct'
 import { GLContext, DataContext } from './contexts'
 
-export function VertexArrayBuffer(props: WithCol, cell?: Cell) {
+import { dirname, basename, extname } from 'path'
+
+type Column = {
+  node: string
+  column: string[]
+  dtype: dtype
+}
+function parseColumn(src: string) {
+  const node = dirname(src)
+  const ext = extname(src)
+  const column = basename(src, ext).split('.')
+  const dtype = DTYPES[ext.slice(1)]
+  return {node, column, dtype}
+}
+
+export function VertexArrayBuffer(props: WithData, cell?: Cell) {
   if (!cell) return Seed(VertexArrayBuffer, props)
   const gl = cell.read(GLContext)
   const client = cell.read(DataContext)
-  return cell.effect<Stream>('buffer', _ => {
-    const listener = vertexArrayBuffer(gl, props.node, props.column, DTYPES[props.dtype])
+  const { node, column, dtype } = parseColumn(props.data)
+  const key = `Vertex Array Buffer for ${props.data}`
+  return cell.effect<Stream>(key, _ => {
+    const listener = vertexArrayBuffer(gl, node, column, dtype)
     const unsubscribe = listener.onChange(stream => {
       _(stream)
     })
@@ -29,16 +44,16 @@ export function VertexArrayBuffer(props: WithCol, cell?: Cell) {
       unsubscribe()
       stream && stream.clear()
     }
-  }, [props.node, props.column.join('.'), props.dtype])
+  }, [props.data])
 }
 
-export function QueueBuffer(props: WithCol, cell?: Cell) {
+export function QueueBuffer(props: WithData, cell?: Cell) {
   if (!cell) return Seed(QueueBuffer, props)
   const client = cell.read(DataContext)
-  const dtype = DTYPES[props.dtype]
-  const key = 'Queue Buffer for ' + props.node + '/' + props.column.join('.')
+  const { node, column, dtype } = parseColumn(props.data)
+  const key = `Queue Buffer for ${props.data}`
   return cell.effect<typeof dtype.ArrayType[]>(key, _ => {
-    const listener = queueBuffer(props.node, props.column, dtype)
+    const listener = queueBuffer(node, column, dtype)
     const unsubscribe = listener.onChange(stream => {
       ;(stream as any).clear = listener.clear
       _(stream)
@@ -50,5 +65,5 @@ export function QueueBuffer(props: WithCol, cell?: Cell) {
       unsubscribe()
       listener && listener.clear()
     }
-  }, [props.node, props.column.join('.'), props.dtype])
+  }, [props.data])
 }
