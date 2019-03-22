@@ -68,10 +68,12 @@ const lumaLoop = new Luma.AnimationLoop({
               if (!src || !dst) return
 
               cell.read(RecordStroke({ node: 'stylus' }))
-
-              cell.read(PaintStroke({ node: 'stylus', framebuffer: src, uImage: ImageTexture({ src: headshot }) }))
-
-          
+              cell.read(PaintStroke({
+                node: 'stylus',
+                framebuffer: src,
+                uImage: ImageTexture({ src: headshot })
+              }))
+        
               const { program, vertexArray } = cell.read(Shader({
                 vs: `
                   attribute vec2 pos;
@@ -117,12 +119,7 @@ const lumaLoop = new Luma.AnimationLoop({
               })
 
               const uProjection = cell.read(Camera.uProjection)
-              program.setUniforms({
-                uProjection,
-                uImage: cell.read(ImageTexture({ src: headshot }))
-              })
-
-              const stageVerts = cell.read('Stage.aPosition')
+              const stageVerts = cell.read(Stage.aPosition)
 
               const bleed = cell.read(Shader({
                 vs: `
@@ -179,7 +176,7 @@ const lumaLoop = new Luma.AnimationLoop({
                 vertexArray: bleed.vertexArray,
                 vertexCount: QUAD_VERTS.length / 3,
                 drawMode: GL.TRIANGLE_STRIP,
-                framebuffer: dst,
+                framebuffer: dst,                
                 uniforms: {
                   uInput: src.color,
                   uStep: 0.001,
@@ -221,16 +218,20 @@ const lumaLoop = new Luma.AnimationLoop({
                 }
               })
           
-              // const draw = () => program.draw({
-              //   vertexArray,
-              //   vertexCount,
-              //   drawMode: GL.POINTS,
-              // })
+              const draw = () => program.draw({
+                vertexArray,
+                vertexCount,
+                drawMode: GL.POINTS,
+                uniforms: {
+                  uProjection,
+                  uImage: cell.read(ImageTexture({ src: headshot }))
+                }
+              })
           
-              // Luma.withParameters(gl, {
-              //   [GL.BLEND]: true,
-              //   blendFunc: [GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA]
-              // }, draw)
+              Luma.withParameters(gl, {
+                // [GL.BLEND]: true,
+                // blendFunc: [GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA]
+              }, draw)
             }
           }</Eval>
         </Loop>,

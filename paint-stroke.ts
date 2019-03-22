@@ -26,9 +26,6 @@ export default function PaintStroke(props: PaintStrokeProps, cell?: Cell) {
       radius: 0.5,
       height: 0.1,
       cap: false,
-      // attributes: {
-      //   pos
-      // },
       vs: `
         uniform vec2 uPos;
         uniform float uForce;
