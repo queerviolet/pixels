@@ -316,9 +316,9 @@ const lumaLoop = new Luma.AnimationLoop({
               const cone = cell.effect<Luma.Cone>('cones', _ => {                  
                 console.log('creating cone')
                 _(new Luma.Cone(gl, {
-                  radius: 0.05,
-                  height: 1,
-                  cap: true,
+                  radius: 0.5,
+                  height: 0.1,
+                  cap: false,
                   // isInstanced: 1,
                   // instanceCount: vertexCount,
                   attributes: {
@@ -336,8 +336,9 @@ const lumaLoop = new Luma.AnimationLoop({
             
                     void main() {
                       // vPosition = (uModel * vec4(positions, 1.0)) + vec4(uPos, positions.y, 0.);
-                      vPosition = vec4(positions.xz + uPos, -positions.y - 0.5, 1.0);
-                      gl_Position = vec4((uProjection * vPosition).xy, positions.y, 1.0);
+                      vec3 vertex = positions * uForce;
+                      vPosition = vec4(vertex.xz + uPos, -vertex.y - 0.5, 1.0);
+                      gl_Position = vec4((uProjection * vPosition).xy, vertex.y, 1.0);
                       // gl_PointSize = 5.0 * force * 7.0;
                       // vForce = force;
                     }`,
@@ -400,7 +401,7 @@ const lumaLoop = new Luma.AnimationLoop({
                 const uModel = new Matrix4().rotateX(-Math.PI / 2)
                 let i = posQueue.length; while (i --> 0) {
                   const uPos = posQueue[i]
-                  const uForce = forceQueue[i]
+                  const uForce = forceQueue[i] || [0];
                   cone.draw({
                     uniforms: {
                       uProjection,
@@ -437,22 +438,31 @@ const lumaLoop = new Luma.AnimationLoop({
                 varying vec3 vPosition;
                 uniform float uStep;
 
-                void main() {
+                vec4 bleed() {
                   vec4 self = texture2D(uInput, vec2(vPosition));
-                  gl_FragColor = self;
-                  for (float dx = -1.0; dx <= 1.0; ++dx) {
-                    for (float dy = -1.0; dy <= 1.0; ++dy) {
+                  vec4 bleedColor = self;
+                  for (float dx = -1.0; dx <= 1.1; ++dx) {
+                    for (float dy = -1.0; dy <= 1.1; ++dy) {
                       vec4 val = texture2D(uInput,
                         vec2(vPosition) + vec2(
                           uStep * dx,
                           uStep * dy
                         )
                       );
-                      if (val.a < self.a) {
-                        gl_FragColor = vec4(val.rgb, val.a + length(vec2(dx, dy)) / 500.0);
+                      float distance = val.a + length(vec2(dx, dy)) / 500.0;
+                      float delta = distance - self.a;
+                      if (delta < 0.0) {
+                        bleedColor = vec4(val.rgb, distance);
                       }
                     }
-                  }                  
+                  }
+                  return bleedColor;
+                }
+
+                void main() {
+                  vec4 self = texture2D(uInput, vec2(vPosition));
+                  vec4 bleedColor = bleed();
+                  gl_FragColor = vec4(((bleedColor + self) / 2.0).rgb, bleedColor.a);
                 }
                 `,
               }))
