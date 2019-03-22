@@ -32,6 +32,7 @@ const lumaLoop = new Luma.AnimationLoop({
   onInitialize({ gl, canvas }) {
     console.log('******* Supported Extensions: *******')
     console.log(gl.getSupportedExtensions())
+    console.log('OES_texture_float:', gl.getExtension('OES_texture_float'))
 
     Luma.setParameters(gl, {
       clearColor: [0, 0, 0, 1],
@@ -40,15 +41,20 @@ const lumaLoop = new Luma.AnimationLoop({
       depthTest: false,
       depthFunc: GL.LEQUAL,
     })
+
     const loop = createLoop()
-    ;(window as any).loop = loop
+    window['LOOP'] = loop    
 
     loop(GLContext).write(gl)
     loop(DataContext).write(defaultClient)
-    console.log('OES_texture_float:', gl.getExtension('OES_texture_float'))
-
-    gl.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT)
-
+    loop('Camera.uProjection').write(new Matrix4().ortho({
+      top: -9,
+      bottom: 9,
+      left: -16,
+      right: 16, 
+      near: -0.1, far: 100
+    }))
+    loop('Stage.aPosition').write(new Luma.Buffer(gl, QUAD_VERTS))
 
     render(
       <GLContext.Provider value={gl}>
@@ -61,8 +67,8 @@ const lumaLoop = new Luma.AnimationLoop({
               cell.read(RecordStroke({ node: 'stylus' }))
               const img = cell.read(ImageTexture({ src: headshot }))
 
-              const posQueue = QueueBuffer({ node: 'stylus', column: ['pos'], dtype: 'vec2' }, cell)
-              const forceQueue = QueueBuffer({ node: 'stylus', column: ['force'], dtype: 'float' }, cell)
+              const posQueue = cell.read(QueueBuffer({ node: 'stylus', column: ['pos'], dtype: 'vec2' }))
+              const forceQueue = cell.read(QueueBuffer({ node: 'stylus', column: ['force'], dtype: 'float' }))
           
               const { program, vertexArray } = cell.read(Shader({
                 vs: `
@@ -108,33 +114,18 @@ const lumaLoop = new Luma.AnimationLoop({
                 force: force.buffer,
               })
 
-              // const uProjection = new Matrix4().orthographic({
-              //   fov: radians(75), aspect: 16 / 9, near: 0.1, far: 50
-              // })
-              const uProjection = new Matrix4().ortho({
-                top: -9,
-                bottom: 9,
-                left: -16,
-                right: 16, 
-                near: -0.1, far: 100
-              })
-              
+              const uProjection = cell.read('Camera.uProjection')
               program.setUniforms({
                 uProjection,
                 uImage: img
               })
 
-              // gl.clearColor(0.0, 0.0, 0.0, 1.0)
-              // gl.clear(GL.COLOR_BUFFER_BIT)
 
               const cone = cell.effect<Luma.Cone>('cones', _ => {                  
-                console.log('creating cone')
                 _(new Luma.Cone(gl, {
                   radius: 0.5,
                   height: 0.1,
                   cap: false,
-                  // isInstanced: 1,
-                  // instanceCount: vertexCount,
                   attributes: {
                     pos
                   },
@@ -144,17 +135,13 @@ const lumaLoop = new Luma.AnimationLoop({
                     // attribute float force;
                     attribute vec3 positions;
                     uniform mat4 uProjection;
-                    uniform mat4 uModel;                    
                     // varying float vForce;
                     varying vec4 vPosition;
             
                     void main() {
-                      // vPosition = (uModel * vec4(positions, 1.0)) + vec4(uPos, positions.y, 0.);
                       vec3 vertex = positions * uForce;
                       vPosition = vec4(vertex.xz + uPos, -vertex.y - 0.5, 1.0);
                       gl_Position = vec4((uProjection * vPosition).xy, vertex.y, 1.0);
-                      // gl_PointSize = 5.0 * force * 7.0;
-                      // vForce = force;
                     }`,
                   fs: `
                     uniform vec2 uPos;
@@ -164,12 +151,8 @@ const lumaLoop = new Luma.AnimationLoop({
                     uniform sampler2D uImage;
             
                     void main() {
-                      // gl_FragColor = vec4(1.0, 0.0, 1.0, 0.5 + vForce);
-                      // gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
-                      // gl_FragColor = vec4(vPosition.xy, 1.0, 1.0);
                       vec2 texPos = vec2((uPos.x + 16.) / 32., (uPos.y + 9.) / 18.);
                       gl_FragColor = vec4(texture2D(uImage, texPos).xyz, 0.0);
-                      // gl_FragColor = vec4(-vPosition.z, vPosition.z, vPosition.z, 1.0);
                     }`,
                 }))
                 return cone => cone.delete()
@@ -212,7 +195,6 @@ const lumaLoop = new Luma.AnimationLoop({
                 : [offscreenB, offscreenA]
 
               if (img && cone && posQueue && forceQueue && posQueue.length && forceQueue.length) {
-                const uModel = new Matrix4().rotateX(-Math.PI / 2)
                 let batch = Math.min(100, posQueue.length, forceQueue.length)
                 while (batch --> 0) {
                   const uPos = posQueue.shift()
@@ -220,7 +202,6 @@ const lumaLoop = new Luma.AnimationLoop({
                   cone.draw({
                     uniforms: {
                       uProjection,
-                      uModel,
                       uPos,
                       uForce,
                       uImage: img,
@@ -230,10 +211,7 @@ const lumaLoop = new Luma.AnimationLoop({
                 }
               }
               
-              const stageVerts = cell.effect<Luma.Buffer>('stage-triangle-buffer', _ => {
-                _(new Luma.Buffer(gl, QUAD_VERTS))
-                return buf => buf._deleteHandle()
-              }, [gl])
+              const stageVerts = cell.read('Stage.aPosition')
 
               const bleed = cell.read(Shader({
                 vs: `
@@ -362,8 +340,6 @@ const lumaLoop = new Luma.AnimationLoop({
     loop.run(tick)
   },
 })
-
-console.log(GLContext, isContext(GLContext))
 
 lumaLoop.start()
 

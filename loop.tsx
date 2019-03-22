@@ -255,7 +255,7 @@ export class Cell {
 
   private outputs: { [key: string]: Cell } = {}
 
-  public read(pattern: any): any {
+  public read(pattern: any): any {    
     return this.get(pattern).value
   }
 

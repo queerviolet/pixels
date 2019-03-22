@@ -51,7 +51,7 @@ export class Stream {
   public push(data: ArrayBuffer | ArrayBufferView) {
     const neededBytes = data.byteLength + this.offset
     if (!this.buffer || this.buffer.byteLength < neededBytes || !this.array || this.array.byteLength < neededBytes) {
-      console.log('alloc', neededBytes * 2)
+      // console.log('alloc', neededBytes * 2)
       this.allocBuffer(neededBytes * 2)
       // console.log('this.buffer.byteLength=', this.buffer.byteLength)
     }    
