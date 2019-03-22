@@ -1,6 +1,6 @@
 import hot from './hot'
 import './stage'
-import { GLContext, DataContext, Clock } from './contexts'
+import { GLContext, DataContext, Clock, Camera, Stage } from './contexts'
 import { QueueBuffer, VertexArrayBuffer } from './buffers'
 import { Seed, Cell } from './loop'
 
@@ -23,6 +23,8 @@ import RecordStroke from './record-stroke'
 import ImageTexture from './image-texture'
 import Shader from './shader'
 import Swapper from './swapper'
+import PaintStroke from './paint-stroke'
+
 
 import defaultClient from './parcel-plugin-writable/src/client'
 
@@ -46,14 +48,14 @@ const lumaLoop = new Luma.AnimationLoop({
 
     loop(GLContext).write(gl)
     loop(DataContext).write(defaultClient)
-    loop('Camera.uProjection').write(new Matrix4().ortho({
+    loop(Camera.uProjection).write(new Matrix4().ortho({
       top: -9,
       bottom: 9,
       left: -16,
       right: 16, 
       near: -0.1, far: 100
     }))
-    loop('Stage.aPosition').write(new Luma.Buffer(gl, QUAD_VERTS))
+    loop(Stage.aPosition).write(new Luma.Buffer(gl, QUAD_VERTS))
 
     render(
         <Loop loop={loop}>
@@ -66,10 +68,9 @@ const lumaLoop = new Luma.AnimationLoop({
               if (!src || !dst) return
 
               cell.read(RecordStroke({ node: 'stylus' }))
-              const img = cell.read(ImageTexture({ src: headshot }))
 
-              const posQueue = cell.read(QueueBuffer({ data: 'stylus/pos.vec2' }))
-              const forceQueue = cell.read(QueueBuffer({ data: 'stylus/force.float' }))
+              cell.read(PaintStroke({ node: 'stylus', framebuffer: src, uImage: ImageTexture({ src: headshot }) }))
+
           
               const { program, vertexArray } = cell.read(Shader({
                 vs: `
@@ -115,62 +116,11 @@ const lumaLoop = new Luma.AnimationLoop({
                 force: force.buffer,
               })
 
-              const uProjection = cell.read('Camera.uProjection')
+              const uProjection = cell.read(Camera.uProjection)
               program.setUniforms({
                 uProjection,
-                uImage: img
+                uImage: cell.read(ImageTexture({ src: headshot }))
               })
-
-              const cone = cell.effect<Luma.Cone>('cones', _ => {                  
-                _(new Luma.Cone(gl, {
-                  radius: 0.5,
-                  height: 0.1,
-                  cap: false,
-                  attributes: {
-                    pos
-                  },
-                  vs: `
-                    uniform vec2 uPos;
-                    uniform float uForce;
-                    attribute vec3 positions;
-                    uniform mat4 uProjection;
-                    varying vec4 vPosition;
-            
-                    void main() {
-                      vec3 vertex = positions * uForce;
-                      vPosition = vec4(vertex.xz + uPos, -vertex.y - 0.5, 1.0);
-                      gl_Position = vec4((uProjection * vPosition).xy, vertex.y, 1.0);
-                    }`,
-                  fs: `
-                    uniform vec2 uPos;
-                    precision highp float;
-                    varying vec4 vPosition;
-                    uniform sampler2D uImage;
-            
-                    void main() {
-                      vec2 texPos = vec2((uPos.x + 16.) / 32., (uPos.y + 9.) / 18.);
-                      gl_FragColor = vec4(texture2D(uImage, texPos).xyz, 0.0);
-                    }`,
-                }))
-                return cone => cone.delete()
-              }, [ gl ])
-
-              if (img && cone && posQueue && forceQueue && posQueue.length && forceQueue.length) {
-                let batch = Math.min(100, posQueue.length, forceQueue.length)
-                while (batch --> 0) {
-                  const uPos = posQueue.shift()
-                  const uForce = forceQueue.shift()
-                  cone.draw({
-                    uniforms: {
-                      uProjection,
-                      uPos,
-                      uForce,
-                      uImage: img,
-                    },
-                    framebuffer: src,
-                  })
-                }
-              }
 
               const stageVerts = cell.read('Stage.aPosition')
 

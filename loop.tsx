@@ -1,7 +1,7 @@
 import * as React from 'react'
 const { useState, useEffect, useContext } = React
 
-import { ReactComponentLike } from 'prop-types'
+import { ReactComponentLike, any } from 'prop-types'
 import createEvent, { Event, Emitter } from './event'
 
 const Context = React.createContext<CellContext>(null)
@@ -71,6 +71,8 @@ type EvalProps = {
   id?: string
   children: Evaluator
 }
+
+const isKey = (key: any) => key instanceof Pattern || typeof key === 'string'
 let nextEvalId = 0
 export function Eval({ id=`anonymous/${nextEvalId++}`, children }: EvalProps) {
   const loop = useContext(Context)
@@ -88,7 +90,8 @@ export function createLoop(): CellContext {
   let didEvaluate: Emitter<Set<Cell>> | null = null
   const onDidEvaluate = createEvent(emit => { didEvaluate = emit })
 
-  const get: any = (pattern: any, evaluator?: Evaluator) => {
+  const get: any = (pattern: any, evaluator?: Evaluator) => {    
+    if (!isKey(pattern)) return pattern
     const key = asKey(pattern)
     if (!cells.has(key)) {
       const cell = new Cell(get, pattern, evaluator)
@@ -314,15 +317,20 @@ const asKey = (key: any) =>
   asKeyPart(key)
 
 
+const tagMap = new WeakMap<any, string>()
 const tag = (key: any): string => {
   if (typeof key === 'string') return JSON.stringify(key)
+  if (key === null) return 'null'
+  if (key === undefined) return 'undefined'
   if (typeof key === 'symbol') {
     if (!symMap.has(key))
       symMap.set(key, `[${nextId++}/${String(key)}]`)
     return symMap.get(key)
   }  
-  if (key[REPR]) return key[REPR]
-  return key[REPR] = `[${nextId++}/${typeof key}(${key.displayName || key.name})]`
+  if (tagMap.has(key)) return tagMap.get(key)
+  const keyString = `[${nextId++}/${typeof key}(${key.displayName || key.name})]`
+  tagMap.set(key, keyString)
+  return keyString
 }
   
    
