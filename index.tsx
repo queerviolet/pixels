@@ -359,7 +359,7 @@ const lumaLoop = new Luma.AnimationLoop({
 
   onRender({ tick, loop, }) {
     loop(Clock).write(tick)
-    loop.run()
+    loop.run(tick)
   },
 })
 

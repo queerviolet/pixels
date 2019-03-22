@@ -99,7 +99,8 @@ export function createLoop(): CellContext {
     for (const c of cellsToInvalidate) dirty.add(c)
   }
 
-  function run() {
+  function run(now=performance.now()) {
+    const deferred = new Set<Cell>()
     while (dirty.size) {      
       const cells = new Set<Cell>(dirty.values())
       //  console.log('%c Beginning evaluation of %s cells', 'color: red', cells.size)
@@ -109,7 +110,12 @@ export function createLoop(): CellContext {
       try {
         for (const cell of cells) {
           current = cell
+          if (cell.lastEvaluatedAt === now) {
+            deferred.add(cell)
+            continue
+          }
           cell.evaluate()
+          cell.lastEvaluatedAt = now
         }
       } catch (error) {
         console.error(new EvaluationError(error, current))
@@ -117,6 +123,10 @@ export function createLoop(): CellContext {
       }
       // console.log('%c did evaluate %s cells', 'color: red', cells.size)
       didEvaluate(cells)
+    }
+    if (deferred.size) {
+      // console.log('Deferred processing of', deferred.size, 'cells')
+      deferred.forEach(cell => dirty.add(cell))
     }
   }
 
@@ -237,6 +247,7 @@ export class Cell {
   public readonly key: string = asKey(this.pattern)
   public value: any = null
   public effects: { [key: string]: Effect } = {}
+  public lastEvaluatedAt = -1
 
   public addOutput(cell: Cell) {
     this.outputs[cell.key as string] = cell
