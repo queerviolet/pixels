@@ -3,7 +3,7 @@
 <style>
   body { background: black; color: white; }
 
-  canvas, #main {
+  canvas {
     position: fixed;
     width: var(--letterbox-width);
     height: var(--letterbox-height);
@@ -11,8 +11,17 @@
     left: var(--letterbox-left);
   }
 
+  canvas {
+    z-index: 100;
+  }
+
+  #main {
+    position: fixed;
+    z-index: 200;
+  }
+
   .cell-inspector {
-    max-width: 20%;
+    max-width: 20vw;
     overflow: hidden;
   }
 

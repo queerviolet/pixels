@@ -2,22 +2,23 @@ import { Seed, Cell } from './loop'
 import { vec2, float } from 'parcel-plugin-writable/src/struct'
 import Data, { write } from './parcel-plugin-writable/src/node'
 import { frameCoordsFrom } from './stage'
+import { GLContext } from './contexts'
 
 type WithNode = { node?: string }
 
 export default function RecordStroke(props: WithNode, cell?: Cell) {
   if (!cell) return Seed(RecordStroke, props)
   const { node } = props
-  return cell.effect('listen-and-write', () => {
+
+  const gl = cell.read(GLContext)
+  if (!gl) return
+  const { canvas } = gl
+  if (!canvas) return
+  console.log('canvas=', canvas)
+
+  return cell.effect('listen-and-write', () => {    
     const pos = Data(node, ['pos'], vec2)
     const force = Data(node, ['force'], float)
-
-    const canvas = document.createElement('div')
-    canvas.style.width = '100%'
-    canvas.style.height = '100%'
-    canvas.style.position = 'fixed'
-    canvas.style.zIndex = '100'
-    document.body.appendChild(canvas)
 
     canvas.addEventListener('mousemove', onMouseMove)
     canvas.addEventListener('touchstart', onTouch)
@@ -50,7 +51,7 @@ export default function RecordStroke(props: WithNode, cell?: Cell) {
       canvas.removeEventListener('touchend', onTouch)
       document.body.removeChild(canvas)
     }
-  }, [node])
+  }, [node, canvas])
 }
 
 
