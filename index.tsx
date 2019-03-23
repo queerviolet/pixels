@@ -59,7 +59,7 @@ const lumaLoop = new Luma.AnimationLoop({
     }))
     loop(Stage.aPosition).write(new Luma.Buffer(gl, QUAD_VERTS))
 
-    const showInspector = true;
+    const showInspector = false;
     render(
         <Loop loop={loop}>
           {showInspector ? <Inspector /> : null}
