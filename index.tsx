@@ -19,6 +19,8 @@ import Loop, { Eval, createLoop, isContext } from './loop'
 import headshot from './ashi-headshot-02.jpg'
 const QUAD_VERTS = new Float32Array([1, 1, 0, -1, 1, 0, 1, -1, 0, -1, -1, 0])
 
+import Inspector from './inspector'
+
 import RecordStroke from './record-stroke'
 import ImageTexture from './image-texture'
 import Shader from './shader'
@@ -57,8 +59,10 @@ const lumaLoop = new Luma.AnimationLoop({
     }))
     loop(Stage.aPosition).write(new Luma.Buffer(gl, QUAD_VERTS))
 
+    const showInspector = true;
     render(
         <Loop loop={loop}>
+          {showInspector ? <Inspector /> : null}
           <Eval>{
             (_, cell) => {
               const gl = cell.read(GLContext)

@@ -10,6 +10,48 @@
     top: var(--letterbox-top);
     left: var(--letterbox-left);
   }
+
+  .cell-inspector {
+    max-width: 28vw;
+    overflow: hidden;
+  }
+
+  .cell-inspector-cell {
+    display: flex;
+    flex-flow: row nowrap;
+    transition: opacity 1s; 
+    font-size: 14px;
+  
+  }
+
+  .cell-inspector-cell.inactive {
+    opacity: 0.7;
+  }
+
+  .cell-inspector-cell-tag {
+    text-align: right;
+    margin-left: auto;
+    font-family: 'Source Code Pro', Inconsolata;
+  }
+
+  .spark-line {
+    display: inline-flex;
+    flex-flow: row nowrap;
+    align-items: flex-end;
+    height: 1em;
+  }
+
+  .spark-line-value {
+    border-top: 1px solid rgb(115, 213, 255);
+    background: rgb(115, 183, 255, 0.3);
+    width: 1em;
+    transition: background-color 1s, border-color 1s;
+  }
+
+  .cell-inspector-cell.inactive .spark-line-value {
+    border-top: 1px solid darkgray;
+    background: darkgray;
+  }
 </style>
 <div id=main></div>
 <script src=index.tsx></script>

@@ -4,7 +4,7 @@ const { useState, useEffect, useContext } = React
 import { ReactComponentLike, any } from 'prop-types'
 import createEvent, { Event, Emitter } from './event'
 
-const Context = React.createContext<CellContext>(null)
+export const Context = React.createContext<CellContext>(null)
 
 export class Pattern {
   constructor(public readonly evaluator, public readonly props) {}
@@ -29,8 +29,8 @@ interface CellContext {
   invalidate(cell: Cell): void
   invalidateAll(cells?: Iterable<Cell>): void
   run(): void
+  readonly cells: Map<string, Cell>
 }
-
 
 const statDelta = (now, prev) => ({
   batch: now.batch - prev.batch,
@@ -125,8 +125,9 @@ export function createLoop(): CellContext {
             deferred.add(cell)
             continue
           }
-          cell.evaluate()
           cell.lastEvaluatedAt = now
+          ++cell.evaluationCount
+          cell.evaluate()
         }
       } catch (error) {
         console.error(new EvaluationError(error, current))
@@ -245,7 +246,7 @@ class Effect<T=any> {
   }
 }
 
-const NilEvaluator = (_args, cell) => cell.value
+export const NilEvaluator = (_args, cell) => cell.value
 
 const getEvaluator = (pattern: any): Evaluator =>
   (pattern && pattern.evaluator) || NilEvaluator
@@ -259,6 +260,7 @@ export class Cell {
   public value: any = null
   public effects: { [key: string]: Effect } = {}
   public lastEvaluatedAt = -1
+  public evaluationCount = 0
 
   public addOutput(cell: Cell) {
     this.outputs[cell.key as string] = cell
@@ -318,7 +320,7 @@ const asKey = (key: any) =>
 
 
 const tagMap = new WeakMap<any, string>()
-const tag = (key: any): string => {
+export const tag = (key: any): string => {
   if (typeof key === 'string') return JSON.stringify(key)
   if (key instanceof Pattern) return key.key
   if (key === null) return 'null'
