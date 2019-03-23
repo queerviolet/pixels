@@ -111,7 +111,6 @@ export function createLoop(): CellContext {
   }
 
   function run(now=performance.now()) {
-    console.log(cells)
     const deferred = new Set<Cell>()
     while (dirty.size) {      
       const cells = new Set<Cell>(dirty.values())
@@ -330,7 +329,7 @@ const tag = (key: any): string => {
     return symMap.get(key)
   }  
   if (tagMap.has(key)) return tagMap.get(key)
-  const keyString = `[${nextId++}/${typeof key}(${key.displayName || key.name})]`
+  const keyString = `[${nextId++}/${typeof key}(${key.displayName || key.name || (key.constructor && key.constructor.name)})]`
   tagMap.set(key, keyString)
   return keyString
 }
