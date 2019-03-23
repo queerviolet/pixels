@@ -30,6 +30,9 @@ interface CellContext {
   invalidateAll(cells?: Iterable<Cell>): void
   run(): void
   readonly cells: Map<string, Cell>
+  readonly tick: number
+
+  queueForDeath(cell: Cell): void
 }
 
 const statDelta = (now, prev) => ({
@@ -90,6 +93,8 @@ export function createLoop(): CellContext {
   let didEvaluate: Emitter<Set<Cell>> | null = null
   const onDidEvaluate = createEvent(emit => { didEvaluate = emit })
 
+  const dying: { cell: Cell, tick: number, }[] = []
+
   const get: any = (pattern: any, evaluator?: Evaluator) => {    
     if (!isKey(pattern)) return pattern
     const key = asKey(pattern)
@@ -102,6 +107,8 @@ export function createLoop(): CellContext {
     return cells.get(key)
   }
 
+  get.tick = 0
+
   function invalidate(cell: Cell) {
     dirty.add(cell)
   }
@@ -110,7 +117,12 @@ export function createLoop(): CellContext {
     for (const c of cellsToInvalidate) dirty.add(c)
   }
 
+  function queueForDeath(cell: Cell) {
+    dying.push({ cell, tick: get.tick })
+  }
+
   function run(now=performance.now()) {
+    ++get.tick;
     const deferred = new Set<Cell>()
     while (dirty.size) {      
       const cells = new Set<Cell>(dirty.values())
@@ -140,11 +152,23 @@ export function createLoop(): CellContext {
       // console.log('Deferred processing of', deferred.size, 'cells')
       deferred.forEach(cell => dirty.add(cell))
     }
+
+    const killLine = get.tick - 10
+    while (dying.length && dying[0].tick < killLine) {
+      const { cell } = dying.shift()
+      if (Object.keys(cell.outputs).length > 0) continue
+      if (cell.wasForgottenAt > killLine) continue
+      cell.kill()
+      cells.delete(cell.key)
+      dirty.delete(cell)
+    }
   }
 
   return Object.assign(get, {
     onDidEvaluate,
-    cells, dirty, invalidate, invalidateAll, run })
+    cells, dirty, invalidate, invalidateAll, run,
+    queueForDeath
+  })
 }
 
 class EvaluationError extends Error {
@@ -261,12 +285,23 @@ export class Cell {
   public effects: { [key: string]: Effect } = {}
   public lastEvaluatedAt = -1
   public evaluationCount = 0
+  public wasForgottenAt = Infinity
 
   public addOutput(cell: Cell) {
-    this.outputs[cell.key as string] = cell
+    this.outputs[cell.key] = cell
+    this.wasForgottenAt = Infinity
   }
 
-  private outputs: { [key: string]: Cell } = {}
+  public removeOutput(cell: Cell) {
+    delete this.outputs[cell.key]
+    if (Object.keys(this.outputs).length === 0) {
+      this.wasForgottenAt = this.context.tick
+      this.context.queueForDeath(this)
+    }
+  }
+
+  public outputs: { [key: string]: Cell } = {}
+  public inputs: Cell[] = []
 
   public read(pattern: any): any {
     return this.get(pattern).value
@@ -275,6 +310,7 @@ export class Cell {
   public get(pattern: any): Cell {
     const target = this.context(pattern)
     target.addOutput(this)
+    this.inputs.push(target)
     return target
   }
 
@@ -299,9 +335,20 @@ export class Cell {
   }
 
   public evaluate() {
+    this.inputs.forEach(input => input.removeOutput(this))
+    this.inputs.splice(0, this.inputs.length)
     this.value = this.evaluator(this.pattern.props, this)
     this.context.invalidateAll(Object.values(this.outputs))
-  }  
+  }
+
+  public isDead: boolean = false
+  public kill() {
+    console.log('Killing cell', this.key)
+    this.isDead = true
+    Object.values(this.effects)
+      .forEach(effect => effect.dispose())
+    this.effects = {}
+  }
 }
 
 console.log('Context:', Context)

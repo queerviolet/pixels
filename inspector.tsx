@@ -13,27 +13,32 @@ type LifeStats = { [key: string]: CellStats }
 type CellStats = {
   key: string,
   title: string,
-  evaluationCount: number[],
+  evaluationCount: number[]
   evaluationDelta: number[]
+  outputs: string[],
 }
 
 const updateStats: (win: number) => Reducer<LifeStats, Map<string, Cell>> =
   (statsWindow: number) => (stats, cells) => {
-    const newStats = {...stats}
+    const newStats: LifeStats = {}
     cells.forEach((cell, key) => {    
-      const cellStats = newStats[key] || (newStats[key] = {
-        key,
-        title: cell.evaluator === NilEvaluator ? cell.key : (cell.evaluator.name || key),
-        evaluationDelta: new Array(statsWindow).fill(0),
-        evaluationCount: new Array(statsWindow).fill(0),
-      })
-      cellStats.evaluationCount.unshift(cell.evaluationCount)
-      const [ current, prev = 0 ] = cellStats.evaluationCount
-      cellStats.evaluationDelta.unshift(current - prev)
-      if (cellStats.evaluationCount.length > statsWindow) {
-        cellStats.evaluationCount.pop()
-        cellStats.evaluationDelta.pop()
+      const s = {...stats[key]}
+      s.key = s.key || key
+      s.title = s.title || (cell.evaluator === NilEvaluator ? cell.key : (cell.evaluator.name || key))
+      s.evaluationDelta = s.evaluationDelta || new Array(statsWindow).fill(0)
+      s.evaluationCount = s.evaluationCount || new Array(statsWindow).fill(0)
+      s.outputs = s.outputs || []
+
+      s.evaluationCount.unshift(cell.evaluationCount)
+      const [ current, prev = 0 ] = s.evaluationCount
+      s.evaluationDelta.unshift(current - prev)
+      if (s.evaluationCount.length > statsWindow) {
+        s.evaluationCount.pop()
+        s.evaluationDelta.pop()
       }
+      s.outputs = Object.keys(cell.outputs)
+
+      newStats[key] = s
     })
     return newStats
   }
@@ -52,9 +57,12 @@ export default function CellInspector({ collectStatsMs = 200, statsWindow=10 }: 
   return <div className='cell-inspector'>{
     Object.values(stats)
       .map(
-        ({ key, title, evaluationDelta }) =>
-          <div key={key} className={`cell-inspector-cell ${evaluationDelta[0] ? 'active' : 'inactive'}`}>
-            <span className='cell-inspector-cell-tag'>{title}</span>
+        ({ key, title, evaluationDelta, outputs }) =>
+          <div key={key} className={`
+            cell-inspector-cell
+            ${evaluationDelta[0] ? 'active' : 'inactive'}
+            `}>
+            <span className='cell-inspector-cell-tag'>{title} ({outputs.length}) </span>
             <SparkLine data={evaluationDelta} />
           </div>
       )
