@@ -16,7 +16,9 @@ import * as React from 'react'
 import Loop, { Eval, createLoop, isContext } from './loop'
 
 //@ts-ignore
-import headshot from './ashi-headshot-02.jpg'
+// import headshot from './ashi-headshot-02.jpg'
+//@ts-ignore
+import skyline from './manila-skyline.jpg'
 const QUAD_VERTS = new Float32Array([1, 1, 0, -1, 1, 0, 1, -1, 0, -1, -1, 0])
 
 import Inspector from './inspector'
@@ -71,11 +73,11 @@ const lumaLoop = new Luma.AnimationLoop({
               const { src, dst } = cell.read(Swapper()) || ({} as any)
               if (!src || !dst) return
 
-              cell.read(RecordStroke({ node: 'stylus' }))
+              cell.read(RecordStroke({ node: 'skyline' }))
               cell.read(PaintStroke({
-                node: 'stylus',
+                node: 'skyline',
                 framebuffer: src,
-                uImage: ImageTexture({ src: headshot })
+                uImage: ImageTexture({ src: skyline })
               }))
         
               const { program, vertexArray } = cell.read(Shader({
@@ -109,8 +111,8 @@ const lumaLoop = new Luma.AnimationLoop({
               })) || ({} as any)
               if (!program) return
 
-              const pos = cell.read(VertexArrayBuffer({ data: 'stylus/pos.vec2' }))
-              const force = cell.read(VertexArrayBuffer({ data: 'stylus/force.float' }))
+              const pos = cell.read(VertexArrayBuffer({ data: 'skyline/pos.vec2' }))
+              const force = cell.read(VertexArrayBuffer({ data: 'skyline/force.float' }))
 
               if (!pos || !force) return
             
@@ -228,7 +230,7 @@ const lumaLoop = new Luma.AnimationLoop({
                 drawMode: GL.POINTS,
                 uniforms: {
                   uProjection,
-                  uImage: cell.read(ImageTexture({ src: headshot }))
+                  uImage: cell.read(ImageTexture({ src: skyline }))
                 }
               })
           
