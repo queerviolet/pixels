@@ -1,7 +1,7 @@
 import * as React from 'react'
 const { useState, useEffect, useContext } = React
 
-import { ReactComponentLike, any } from 'prop-types'
+import { ReactComponentLike } from 'prop-types'
 import createEvent, { Event, Emitter } from './event'
 
 export const Context = React.createContext<CellContext>(null)
@@ -22,6 +22,10 @@ export class Pattern {
   withProps(newProps: any): Pattern {
     return new Pattern(this.evaluator, {...this.props, ...newProps})
   }
+}
+
+export function withProps<T>(pattern: T, newProps: any) {
+  return (pattern as any).withProps(newProps) as T
 }
 
 export function Seed<T=any>(evaluator: Evaluator, props: any): T {

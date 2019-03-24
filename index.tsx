@@ -2,7 +2,7 @@ import hot from './hot'
 import './stage'
 import { GLContext, DataContext, Clock, Camera, Stage } from './contexts'
 import { QueueBuffer, VertexArrayBuffer } from './buffers'
-import { Seed, Cell } from './loop'
+import { Seed, Cell, withProps } from './loop'
 
 import Data, { write } from 'parcel-plugin-writable/src/node'
 import { vec2, float } from 'parcel-plugin-writable/src/struct'
@@ -16,9 +16,10 @@ import * as React from 'react'
 import Loop, { Eval, createLoop, isContext } from './loop'
 
 //@ts-ignore
-// import headshot from './ashi-headshot-02.jpg'
+import headshot from './ashi-headshot-02.jpg'
 //@ts-ignore
 import skyline from './manila-skyline.jpg'
+
 const QUAD_VERTS = new Float32Array([
   1, 1, 0,   -1, 1, 0,
   1, -1, 0, -1, -1, 0])
@@ -143,10 +144,9 @@ const lumaLoop = new Luma.AnimationLoop({
                 uImage: ImageTexture({ src: skyline })
               } as any))
 
-
               cell.read(Layers([
-                BLEED,
                 { output: points.color, opacity: 0.5 },
+                { output: bleed.output, opacity: 1.0 },
               ]))
             }
           }</Eval>

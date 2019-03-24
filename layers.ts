@@ -1,7 +1,7 @@
 import * as GL from 'luma.gl/constants'
-import { withParameters, Texture2D } from 'luma.gl'
+import { withParameters, Texture2D, Framebuffer } from 'luma.gl'
 
-import { Cell, Seed } from './loop'
+import { Cell, Seed, Pattern } from './loop'
 
 import Shader from './shader'
 import { GLContext, Stage } from './contexts'
@@ -33,6 +33,15 @@ const STAGE_SHADER = Shader({
   `,
 })
 
+const getTexture = (cell: Cell, val: any) => {
+  console.log(val)
+  if (!val) return val
+  if (val instanceof Pattern) return getTexture(cell, cell.read(val))
+  if (val instanceof Texture2D) return val
+  if (val instanceof Framebuffer) return val.color
+  return getTexture(cell, val.output)
+}
+
 export default function Layers(layers: Layer[], cell?: Cell) {
   if (!cell) return Seed(Layers, layers)
 
@@ -46,13 +55,16 @@ export default function Layers(layers: Layer[], cell?: Cell) {
 
   withParameters(gl, {
     [GL.BLEND]: true,
-    blendFunc: [GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA]
+    blendFunc: [GL.SRC_ALPHA, GL.SRC_ALPHA]
   }, () => {
-    gl.clear(GL.COLOR_BUFFER_BIT)
-    for (let input of layers) {
+    cell.invalidate()
+    // gl.clear(GL.COLOR_BUFFER_BIT)
+    let i = layers.length; while (i --> 0) {
+      const input = layers[i]
       const layer = cell.read(input)
       if (!layer) continue
-      const uColor = cell.read(layer.output ? layer.output : cell.read(layer))
+      const uColor = getTexture(cell, layer)
+      console.log(uColor)
       if (!uColor) continue
       const uOpacity =
         typeof input.opacity === 'number'
@@ -65,7 +77,7 @@ export default function Layers(layers: Layer[], cell?: Cell) {
           ? layer.opacity
           :
           1.0
-
+      console.log(uColor, uOpacity)
       stage.program.draw({
         vertexArray: stage.vertexArray,
         vertexCount: uCount,
