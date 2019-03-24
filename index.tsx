@@ -31,7 +31,7 @@ import ImageTexture from './image-texture'
 import Shader from './shader'
 import Swapper from './swapper'
 import PaintStroke from './paint-stroke'
-
+import Rumination from './rumination'
 
 import defaultClient from './parcel-plugin-writable/src/client'
 
@@ -65,7 +65,7 @@ const lumaLoop = new Luma.AnimationLoop({
     loop(Stage.aPosition).write(new Luma.Buffer(gl, QUAD_VERTS))
     loop(Stage.uCount).write(QUAD_VERTS.length / 3)
 
-    const showInspector = false;
+    const showInspector = true;
     render(
         <Loop loop={loop}>
           {showInspector ? <Inspector /> : null}
@@ -74,16 +74,10 @@ const lumaLoop = new Luma.AnimationLoop({
               const gl = cell.read(GLContext)
               if (!gl) return
 
-              const { src, dst } = cell.read(Swapper()) || ({} as any)
-              if (!src || !dst) return
+              // const { src, dst } = cell.read(Swapper()) || ({} as any)
+              // if (!src || !dst) return
 
               cell.read(RecordStroke({ node: 'skyline' }))
-              cell.read(PaintStroke({
-                node: 'skyline',
-                framebuffer: src,
-                batchSize: 100,
-                uImage: ImageTexture({ src: skyline })
-              } as any))
 
               cell.read(Points({
                 node: 'skyline',                
@@ -92,67 +86,64 @@ const lumaLoop = new Luma.AnimationLoop({
         
               const stageVerts = cell.read(Stage.aPosition)
 
-              const bleed = cell.read(Shader({
-                vs: `
-                attribute vec3 aPosition;
-                varying vec3 vPosition;
+              const bleed = cell.read(Rumination({
+                uniforms: {
+                  uStep: 0.001,
+                },
+                shader: Shader({
+                  vs: `
+                    attribute vec3 aPosition;
+                    varying vec3 vPosition;
 
-                void main() {
-                  vPosition = (aPosition + vec3(1.0, 1.0, 0.0)) / 2.0;
-                  gl_Position = vec4(aPosition, 1.0);
-                }
-                `,
-                fs: `
-                precision highp float;
-                uniform sampler2D uInput;
-                varying vec3 vPosition;
-                uniform float uStep;
-
-                vec4 bleed() {
-                  vec4 self = texture2D(uInput, vec2(vPosition));
-                  vec4 bleedColor = self;
-                  for (float dx = -1.0; dx <= 1.1; ++dx) {
-                    for (float dy = -1.0; dy <= 1.1; ++dy) {
-                      vec4 val = texture2D(uInput,
-                        vec2(vPosition) + vec2(
-                          uStep * dx,
-                          uStep * dy
-                        )
-                      );
-                      float distance = val.a + length(vec2(dx, dy)) / 500.0;
-                      float delta = distance - self.a;
-                      if (delta < 0.0) {
-                        bleedColor = vec4(val.rgb, distance);
-                      }
+                    void main() {
+                      vPosition = (aPosition + vec3(1.0, 1.0, 0.0)) / 2.0;
+                      gl_Position = vec4(aPosition, 1.0);
                     }
-                  }
-                  return bleedColor;
-                }
+                  `,
+                  fs: `
+                    precision highp float;
+                    uniform sampler2D uInput;
+                    varying vec3 vPosition;
+                    uniform float uStep;
 
-                void main() {
-                  vec4 self = texture2D(uInput, vec2(vPosition));
-                  vec4 bleedColor = bleed();
-                  gl_FragColor = vec4(((bleedColor + self) / 2.0).rgb, bleedColor.a);
-                }
-                `,
+                    vec4 bleed() {
+                      vec4 self = texture2D(uInput, vec2(vPosition));
+                      vec4 bleedColor = self;
+                      for (float dx = -1.0; dx <= 1.1; ++dx) {
+                        for (float dy = -1.0; dy <= 1.1; ++dy) {
+                          vec4 val = texture2D(uInput,
+                            vec2(vPosition) + vec2(
+                              uStep * dx,
+                              uStep * dy
+                            )
+                          );
+                          float distance = val.a + length(vec2(dx, dy)) / 500.0;
+                          float delta = distance - self.a;
+                          if (delta < 0.0) {
+                            bleedColor = vec4(val.rgb, distance);
+                          }
+                        }
+                      }
+                      return bleedColor;
+                    }
+
+                    void main() {
+                      vec4 self = texture2D(uInput, vec2(vPosition));
+                      vec4 bleedColor = bleed();
+                      gl_FragColor = vec4(((bleedColor + self) / 2.0).rgb, bleedColor.a);
+                    }
+                  `,
+                })
               }))
 
               if (!bleed) return
 
-              bleed.vertexArray.setAttributes({
-                aPosition: stageVerts
-              })
-
-              bleed.program.draw({
-                vertexArray: bleed.vertexArray,
-                vertexCount: QUAD_VERTS.length / 3,
-                drawMode: GL.TRIANGLE_STRIP,
-                framebuffer: dst,                
-                uniforms: {
-                  uInput: src.color,
-                  uStep: 0.001,
-                }
-              })
+              cell.read(PaintStroke({
+                node: 'skyline',
+                framebuffer: bleed.input,
+                batchSize: 100,
+                uImage: ImageTexture({ src: skyline })
+              } as any))
 
               const drawStage = cell.read(Shader({
                 vs: `
@@ -185,7 +176,7 @@ const lumaLoop = new Luma.AnimationLoop({
                 vertexCount: QUAD_VERTS.length / 3,
                 drawMode: GL.TRIANGLE_STRIP,
                 uniforms: {
-                  uColor: src.color,
+                  uColor: bleed.output,
                 }
               })          
             }

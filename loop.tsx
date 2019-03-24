@@ -18,10 +18,28 @@ export class Pattern {
     Object.defineProperty(this, 'key', { value })
     return value
   }
+
+  withProps(newProps: any): Pattern {
+    return new Pattern(this.evaluator, {...this.props, ...newProps})
+  }
 }
 
-export const Seed = (evaluator: Evaluator, props: any) =>
-  new Pattern(evaluator, props)
+export function Seed<T=any>(evaluator: Evaluator, props: any): T {
+  return new Pattern(evaluator, props) as any
+}
+
+export function ReadObject<T extends object=object>(object: T, cell?: Cell): T {
+  if (!cell) return Seed(ReadObject, object)
+  const out: T = {} as T
+
+  const keys = Object.keys(object)
+  let i = keys.length; while (i --> 0) {
+    const k = keys[i]
+    out[k] = cell.read(object[k])
+  }
+
+  return out
+}
 
 interface CellContext {
   (pattern: any, evaluator?: Evaluator): Cell
@@ -96,12 +114,18 @@ export function createLoop(): CellContext {
   const dying: { cell: Cell, tick: number, }[] = []
 
   const get: any = (pattern: any, evaluator?: Evaluator) => {    
-    if (!isKey(pattern)) return pattern
-    const key = asKey(pattern)
+    const key = tag(pattern)
     if (!cells.has(key)) {
-      const cell = new Cell(get, pattern, evaluator)
-      cells.set(key, cell)
-      invalidate(cell)
+      let cell
+      if (isKey(pattern)) {
+        cell = new Cell(get, pattern, evaluator)
+        cells.set(key, cell)
+        invalidate(cell)
+      } else {
+        cell = new Cell(get, pattern, NilEvaluator)
+        cell.value = pattern
+        cells.set(key, cell)        
+      }
       return cell
     }
     return cells.get(key)
@@ -245,7 +269,7 @@ export class Cell {
     public readonly pattern: Pattern,
     public evaluator: Evaluator = getEvaluator(pattern)) { }
 
-  public readonly key: string = asKey(this.pattern)
+  public readonly key: string = tag(this.pattern)
   public value: any = null
   public effects: { [key: string]: Effect } = {}
   public lastEvaluatedAt = -1
@@ -272,11 +296,23 @@ export class Cell {
     return this.get(pattern).value
   }
 
+  public readChild(pattern: any): any {
+    return this.child(pattern).value
+  }
+
   public get(pattern: any): Cell {
     const target = this.context(pattern)
     target.addOutput(this)
     this.inputs.push(target)
     return target
+  }  
+
+  public child(pattern: any): Cell {
+    if (pattern instanceof Pattern) {
+      return this.get(pattern.withProps({ __parentKey: this.key }))
+    }
+    console.error('cell.child called on non-pattern at cell', this.key)
+    return this.get(pattern)
   }
 
   public effect<T>(key: string, effector: Effector<T>, deps?: any[]): T {
