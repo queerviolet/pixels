@@ -55,7 +55,7 @@ export default function Layers(layers: Layer[], cell?: Cell) {
 
   withParameters(gl, {
     [GL.BLEND]: true,
-    blendFunc: [GL.SRC_ALPHA, GL.SRC_ALPHA]
+    blendFunc: [GL.ONE, GL.SRC_ALPHA]
   }, () => {
     cell.invalidate()
     // gl.clear(GL.COLOR_BUFFER_BIT)
