@@ -29,11 +29,61 @@ import Points from './points'
 import RecordStroke from './record-stroke'
 import ImageTexture from './image-texture'
 import Shader from './shader'
-import Swapper from './swapper'
 import PaintStroke from './paint-stroke'
 import Rumination from './rumination'
+import Layers from './layers'
 
 import defaultClient from './parcel-plugin-writable/src/client'
+
+const BLEED = Rumination({
+  uniforms: {
+    uStep: 0.001,
+  },
+  shader: Shader({
+    vs: `
+      attribute vec3 aPosition;
+      varying vec3 vPosition;
+
+      void main() {
+        vPosition = (aPosition + vec3(1.0, 1.0, 0.0)) / 2.0;
+        gl_Position = vec4(aPosition, 1.0);
+      }
+    `,
+    fs: `
+      precision highp float;
+      uniform sampler2D uInput;
+      varying vec3 vPosition;
+      uniform float uStep;
+
+      vec4 bleed() {
+        vec4 self = texture2D(uInput, vec2(vPosition));
+        vec4 bleedColor = self;
+        for (float dx = -1.0; dx <= 1.1; ++dx) {
+          for (float dy = -1.0; dy <= 1.1; ++dy) {
+            vec4 val = texture2D(uInput,
+              vec2(vPosition) + vec2(
+                uStep * dx,
+                uStep * dy
+              )
+            );
+            float distance = val.a + length(vec2(dx, dy)) / 500.0;
+            float delta = distance - self.a;
+            if (delta < 0.0) {
+              bleedColor = vec4(val.rgb, distance);
+            }
+          }
+        }
+        return bleedColor;
+      }
+
+      void main() {
+        vec4 self = texture2D(uInput, vec2(vPosition));
+        vec4 bleedColor = bleed();
+        gl_FragColor = vec4(((bleedColor + self) / 2.0).rgb, bleedColor.a);
+      }
+    `,
+  })
+})
 
 const lumaLoop = new Luma.AnimationLoop({
   useDevicePixels: true,
@@ -71,12 +121,6 @@ const lumaLoop = new Luma.AnimationLoop({
           {showInspector ? <Inspector /> : null}
           <Eval>{
             (_, cell) => {
-              const gl = cell.read(GLContext)
-              if (!gl) return
-
-              // const { src, dst } = cell.read(Swapper()) || ({} as any)
-              // if (!src || !dst) return
-
               cell.read(RecordStroke({ node: 'skyline' }))
 
               cell.read(Points({
@@ -84,57 +128,9 @@ const lumaLoop = new Luma.AnimationLoop({
                 uImage: ImageTexture({ src: skyline })
               }))
         
-              const stageVerts = cell.read(Stage.aPosition)
+              cell.read(Layers([ BLEED ]))
 
-              const bleed = cell.read(Rumination({
-                uniforms: {
-                  uStep: 0.001,
-                },
-                shader: Shader({
-                  vs: `
-                    attribute vec3 aPosition;
-                    varying vec3 vPosition;
-
-                    void main() {
-                      vPosition = (aPosition + vec3(1.0, 1.0, 0.0)) / 2.0;
-                      gl_Position = vec4(aPosition, 1.0);
-                    }
-                  `,
-                  fs: `
-                    precision highp float;
-                    uniform sampler2D uInput;
-                    varying vec3 vPosition;
-                    uniform float uStep;
-
-                    vec4 bleed() {
-                      vec4 self = texture2D(uInput, vec2(vPosition));
-                      vec4 bleedColor = self;
-                      for (float dx = -1.0; dx <= 1.1; ++dx) {
-                        for (float dy = -1.0; dy <= 1.1; ++dy) {
-                          vec4 val = texture2D(uInput,
-                            vec2(vPosition) + vec2(
-                              uStep * dx,
-                              uStep * dy
-                            )
-                          );
-                          float distance = val.a + length(vec2(dx, dy)) / 500.0;
-                          float delta = distance - self.a;
-                          if (delta < 0.0) {
-                            bleedColor = vec4(val.rgb, distance);
-                          }
-                        }
-                      }
-                      return bleedColor;
-                    }
-
-                    void main() {
-                      vec4 self = texture2D(uInput, vec2(vPosition));
-                      vec4 bleedColor = bleed();
-                      gl_FragColor = vec4(((bleedColor + self) / 2.0).rgb, bleedColor.a);
-                    }
-                  `,
-                })
-              }))
+              const bleed = cell.read(BLEED)
 
               if (!bleed) return
 
@@ -144,41 +140,7 @@ const lumaLoop = new Luma.AnimationLoop({
                 batchSize: 100,
                 uImage: ImageTexture({ src: skyline })
               } as any))
-
-              const drawStage = cell.read(Shader({
-                vs: `
-                attribute vec3 aPosition;
-                varying vec3 vPosition;
-
-                void main() {
-                  vPosition = (aPosition + vec3(1.0, 1.0, 0.0)) / 2.0;
-                  gl_Position = vec4(aPosition, 1.0);
-                }
-                `,
-                fs: `
-                precision highp float;
-                uniform sampler2D uColor;
-                varying vec3 vPosition;
-
-                void main() {
-                  gl_FragColor = vec4(texture2D(uColor, vec2(vPosition)).rgb, 0.01);
-                }
-                `,
-              }))
-              if (!drawStage) return
-
-              drawStage.vertexArray.setAttributes({
-                aPosition: stageVerts
-              })
-
-              drawStage.program.draw({
-                vertexArray: drawStage.vertexArray,
-                vertexCount: QUAD_VERTS.length / 3,
-                drawMode: GL.TRIANGLE_STRIP,
-                uniforms: {
-                  uColor: bleed.output,
-                }
-              })          
+      
             }
           }</Eval>
         </Loop>,
@@ -204,17 +166,3 @@ hot(module).onDispose(() => {
   const { canvas=null } = lumaLoop.gl || {}
   canvas && canvas.parentNode.removeChild(canvas)
 })
-
-
-// type $<T> = { __$Pattern__: 'Is a pattern', __$Pattern_Type__: T }
-
-// interface Evaluator<Input, Output> {
-//   (input: Input): $<Output>
-//   (input: Input, cell: any): Output  
-// }
-
-// function Eval<I, O>(evaluate: (input: I) => O): Evaluator<I, O> => {
-
-// }
-
-// new Node('stroke').field('pos').shape(vec2)

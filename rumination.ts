@@ -3,7 +3,7 @@ import { TRIANGLE_STRIP } from 'luma.gl/constants'
 import { Cell, Seed, ReadObject } from './loop'
 
 import { Shader } from './shader'
-import Swapper from './swapper'
+import { Swapper } from './framebuffer'
 import { Stage } from './contexts'
 
 export interface Props {
