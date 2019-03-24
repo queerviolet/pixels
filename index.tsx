@@ -77,6 +77,7 @@ const lumaLoop = new Luma.AnimationLoop({
               cell.read(PaintStroke({
                 node: 'skyline',
                 framebuffer: src,
+                batchSize: 10,
                 uImage: ImageTexture({ src: skyline })
               }))
         

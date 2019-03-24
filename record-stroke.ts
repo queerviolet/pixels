@@ -20,7 +20,9 @@ export default function RecordStroke(props: WithNode, cell?: Cell) {
     const pos = Data(node, ['pos'], vec2)
     const force = Data(node, ['force'], float)
 
-    canvas.addEventListener('mousemove', onMouseMove)
+    canvas.addEventListener('mousedown', onMouse)
+    canvas.addEventListener('mousemove', onMouse)
+    canvas.addEventListener('mouseup', onMouse)
     canvas.addEventListener('touchstart', onTouch)
     canvas.addEventListener('touchmove', onTouch)
     canvas.addEventListener('touchend', onTouch)
@@ -37,7 +39,11 @@ export default function RecordStroke(props: WithNode, cell?: Cell) {
       }
     }
 
-    function onMouseMove(ev: MouseEvent) {  
+    let isDrawing = false
+    function onMouse(ev: MouseEvent) {
+      if (ev.type === 'mousedown') isDrawing = true
+      if (!isDrawing) return
+      if (ev.type === 'mouseup') isDrawing = false
       pos.set(frameCoordsFrom(ev) as any)
       force.set([0.5])
       write(pos)
@@ -45,11 +51,10 @@ export default function RecordStroke(props: WithNode, cell?: Cell) {
     }
 
     return () => {
-      canvas.removeEventListener('mousemove', onMouseMove)
+      canvas.removeEventListener('mousemove', onMouse)
       canvas.removeEventListener('touchstart', onTouch)
       canvas.removeEventListener('touchmove', onTouch)
       canvas.removeEventListener('touchend', onTouch)
-      document.body.removeChild(canvas)
     }
   }, [node, canvas])
 }
