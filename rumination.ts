@@ -9,6 +9,7 @@ import { Stage } from './contexts'
 export interface Props {
   shader: Shader
   uniforms?: object
+  opacity?: number
 }
 
 export default function Rumination(props: Props, cell?: Cell) {
@@ -42,6 +43,7 @@ export default function Rumination(props: Props, cell?: Cell) {
     input: src,
     output: dst.color,
     src,
-    dst
+    dst,
+    opacity: props.opacity
   }
 }

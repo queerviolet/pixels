@@ -9,6 +9,7 @@ export interface Props {
   node: string
   drawMode?: number
   uImage: any
+  output?: any
 }
 
 export default function Points(props: Props, cell?: Cell) {
@@ -38,7 +39,7 @@ export default function Points(props: Props, cell?: Cell) {
 
       void main() {
         vec2 texPos = vec2((vPos.x + 16.) / 32., (vPos.y + 9.) / 18.);
-        gl_FragColor = texture2D(uImage, texPos);
+        gl_FragColor = vec4(texture2D(uImage, texPos).rgb, 1.0);
       }
     `
   }))
@@ -62,7 +63,7 @@ export default function Points(props: Props, cell?: Cell) {
   const uImage = cell.read(props.uImage)
   if (!uImage) return
 
-  shader.program.draw({
+  const params: any = {
     vertexArray: shader.vertexArray,
     vertexCount,
     drawMode,
@@ -70,5 +71,14 @@ export default function Points(props: Props, cell?: Cell) {
       uProjection,
       uImage,
     }
-  })
+  }
+
+  let output = null
+  if (props.output) {
+    output = cell.read(props.output)
+    params.framebuffer = output
+  }
+  shader.program.draw(params)
+
+  return output && output.color
 }

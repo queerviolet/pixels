@@ -1,10 +1,10 @@
-import { TRIANGLE_STRIP } from 'luma.gl/constants'
-import { Texture2D } from 'luma.gl'
+import * as GL from 'luma.gl/constants'
+import { withParameters, Texture2D } from 'luma.gl'
 
 import { Cell, Seed } from './loop'
 
 import Shader from './shader'
-import { Stage } from './contexts'
+import { GLContext, Stage } from './contexts'
 
 export type Layer = {
   output: Texture2D
@@ -36,27 +36,45 @@ const STAGE_SHADER = Shader({
 export default function Layers(layers: Layer[], cell?: Cell) {
   if (!cell) return Seed(Layers, layers)
 
+  const gl = cell.read(GLContext)
   const aPosition = cell.read(Stage.aPosition)
   const uCount = cell.read(Stage.uCount)
   const stage = cell.read(STAGE_SHADER)
-  if (!aPosition || !stage) return
+  if (!gl || !aPosition || !stage) return
 
   stage.vertexArray.setAttributes({ aPosition })  
-  
-  for (let input of layers) {
-    const layer = cell.read(input)
-    if (!layer) continue
-    const uColor = layer.output ? cell.read(layer.output) : cell.read(layer)
-    if (!uColor) continue
-    const uOpacity = layer.opacity || 1.0
-    stage.program.draw({
-      vertexArray: stage.vertexArray,
-      vertexCount: uCount,
-      drawMode: TRIANGLE_STRIP,
-      uniforms: {
-        uColor,
-        uOpacity,        
-      }
-    })    
-  }
+
+  withParameters(gl, {
+    [GL.BLEND]: true,
+    blendFunc: [GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA]
+  }, () => {
+    gl.clear(GL.COLOR_BUFFER_BIT)
+    for (let input of layers) {
+      const layer = cell.read(input)
+      if (!layer) continue
+      const uColor = cell.read(layer.output ? layer.output : cell.read(layer))
+      if (!uColor) continue
+      const uOpacity =
+        typeof input.opacity === 'number'
+          ? input.opacity
+          :
+        input['props'] && typeof input['props']['opacity'] === 'number'
+          ? input['props']['opacity']
+          :
+        typeof layer.opacity === 'number'
+          ? layer.opacity
+          :
+          1.0
+
+      stage.program.draw({
+        vertexArray: stage.vertexArray,
+        vertexCount: uCount,
+        drawMode: GL.TRIANGLE_STRIP,
+        uniforms: {
+          uColor,
+          uOpacity,        
+        }
+      })    
+    }
+  })
 }

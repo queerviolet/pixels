@@ -34,6 +34,7 @@ import Rumination from './rumination'
 import Layers from './layers'
 
 import defaultClient from './parcel-plugin-writable/src/client'
+import { Framebuffer } from './framebuffer'
 
 const BLEED = Rumination({
   uniforms: {
@@ -122,14 +123,15 @@ const lumaLoop = new Luma.AnimationLoop({
           <Eval>{
             (_, cell) => {
               cell.read(RecordStroke({ node: 'skyline' }))
-
-              cell.read(Points({
-                node: 'skyline',                
-                uImage: ImageTexture({ src: skyline })
-              }))
         
-              cell.read(Layers([ BLEED ]))
-
+              const points = cell.readChild(Framebuffer())
+              if (!points) return
+              
+              cell.read(Points({
+                node: 'skyline',
+                uImage: ImageTexture({ src: skyline }),
+                output: points,      
+              }))
               const bleed = cell.read(BLEED)
 
               if (!bleed) return
@@ -140,7 +142,12 @@ const lumaLoop = new Luma.AnimationLoop({
                 batchSize: 100,
                 uImage: ImageTexture({ src: skyline })
               } as any))
-      
+
+
+              cell.read(Layers([
+                BLEED,
+                { output: points.color, opacity: 0.5 },
+              ]))
             }
           }</Eval>
         </Loop>,
