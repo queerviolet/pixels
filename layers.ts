@@ -57,14 +57,16 @@ export default function Layers(layers: Layer[], cell?: Cell) {
     [GL.BLEND]: true,
     blendFunc: [GL.ONE, GL.SRC_ALPHA]
   }, () => {
+    // TODO: Invalidate framebuffers when we draw to
+    // avoid having to do this.
     cell.invalidate()
+
     // gl.clear(GL.COLOR_BUFFER_BIT)
     let i = layers.length; while (i --> 0) {
       const input = layers[i]
       const layer = cell.read(input)
       if (!layer) continue
       const uColor = getTexture(cell, layer)
-      console.log(uColor)
       if (!uColor) continue
       const uOpacity =
         typeof input.opacity === 'number'
@@ -77,7 +79,6 @@ export default function Layers(layers: Layer[], cell?: Cell) {
           ? layer.opacity
           :
           1.0
-      console.log(uColor, uOpacity)
       stage.program.draw({
         vertexArray: stage.vertexArray,
         vertexCount: uCount,
