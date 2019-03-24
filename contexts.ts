@@ -7,5 +7,6 @@ export const Camera = {
 }
 
 export const Stage = {
-  aPosition: 'Stage.aPosition'
+  aPosition: 'Stage.aPosition',
+  uCount: 'Stage.uCount',
 }

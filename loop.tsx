@@ -308,7 +308,7 @@ export class Cell {
 
   public isDead: boolean = false
   public kill() {
-    console.log('Killing cell', this.key)
+    console.log('Killing cell', this.key, 'at tick', this.context.tick, ' wasForgottenAt=', this.wasForgottenAt)
     this.isDead = true
     Object.values(this.effects)
       .forEach(effect => effect.dispose())
@@ -344,12 +344,29 @@ export const tag = (key: any): string => {
     return symMap.get(key)
   }  
   if (tagMap.has(key)) return tagMap.get(key)
-  const keyString = `[${nextId++}/${typeof key}(${key.displayName || key.name || (key.constructor && key.constructor.name)})]`
+  const keyString = 
+    Object.getPrototypeOf(key) === Object.prototype
+      ? serializePlainObject(key)
+      :
+    Array.isArray(key)
+      ? serializeArray(key)
+      :
+    `<${nextId++}/${typeof key}(${key.displayName || key.name || (key.constructor && key.constructor.name)})>`
   tagMap.set(key, keyString)
   return keyString
 }
-  
-   
+
+function serializePlainObject(o: object) {
+  const entries = Object.entries(o).map(
+    ([k, v]) => tag(k) + ':' + tag(v)
+  ).join(', ')
+  return `{${entries}}`
+}
+ 
+function serializeArray(a: any[]) {
+  return `[${a.map(tag).join(', ')}]`
+}
+
 const asKeyPart = (part: any) =>
   typeof part === 'symbol' || typeof part === 'function'
     ? repr(part)

@@ -19,7 +19,9 @@ import Loop, { Eval, createLoop, isContext } from './loop'
 // import headshot from './ashi-headshot-02.jpg'
 //@ts-ignore
 import skyline from './manila-skyline.jpg'
-const QUAD_VERTS = new Float32Array([1, 1, 0, -1, 1, 0, 1, -1, 0, -1, -1, 0])
+const QUAD_VERTS = new Float32Array([
+  1, 1, 0,   -1, 1, 0,
+  1, -1, 0, -1, -1, 0])
 
 import Inspector from './inspector'
 
@@ -61,6 +63,7 @@ const lumaLoop = new Luma.AnimationLoop({
       near: -0.1, far: 100
     }))
     loop(Stage.aPosition).write(new Luma.Buffer(gl, QUAD_VERTS))
+    loop(Stage.uCount).write(QUAD_VERTS.length / 3)
 
     const showInspector = false;
     render(
@@ -75,18 +78,17 @@ const lumaLoop = new Luma.AnimationLoop({
               if (!src || !dst) return
 
               cell.read(RecordStroke({ node: 'skyline' }))
-              // cell.read(PaintStroke({
-              //   node: 'skyline',
-              //   framebuffer: src,
-              //   batchSize: 100,
-              //   uImage: ImageTexture({ src: skyline })
-              // }))
+              cell.read(PaintStroke({
+                node: 'skyline',
+                framebuffer: src,
+                batchSize: 100,
+                uImage: ImageTexture({ src: skyline })
+              } as any))
 
               cell.read(Points({
                 node: 'skyline',                
                 uImage: ImageTexture({ src: skyline })
               }))
-
         
               const stageVerts = cell.read(Stage.aPosition)
 
@@ -178,14 +180,14 @@ const lumaLoop = new Luma.AnimationLoop({
                 aPosition: stageVerts
               })
 
-              // drawStage.program.draw({
-              //   vertexArray: drawStage.vertexArray,
-              //   vertexCount: QUAD_VERTS.length / 3,
-              //   drawMode: GL.TRIANGLE_STRIP,
-              //   uniforms: {
-              //     uColor: src.color,
-              //   }
-              // })          
+              drawStage.program.draw({
+                vertexArray: drawStage.vertexArray,
+                vertexCount: QUAD_VERTS.length / 3,
+                drawMode: GL.TRIANGLE_STRIP,
+                uniforms: {
+                  uColor: src.color,
+                }
+              })          
             }
           }</Eval>
         </Loop>,
