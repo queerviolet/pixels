@@ -23,6 +23,7 @@ const QUAD_VERTS = new Float32Array([1, 1, 0, -1, 1, 0, 1, -1, 0, -1, -1, 0])
 
 import Inspector from './inspector'
 
+import Points from './points'
 import RecordStroke from './record-stroke'
 import ImageTexture from './image-texture'
 import Shader from './shader'
@@ -74,58 +75,19 @@ const lumaLoop = new Luma.AnimationLoop({
               if (!src || !dst) return
 
               cell.read(RecordStroke({ node: 'skyline' }))
-              cell.read(PaintStroke({
-                node: 'skyline',
-                framebuffer: src,
-                batchSize: 10,
+              // cell.read(PaintStroke({
+              //   node: 'skyline',
+              //   framebuffer: src,
+              //   batchSize: 100,
+              //   uImage: ImageTexture({ src: skyline })
+              // }))
+
+              cell.read(Points({
+                node: 'skyline',                
                 uImage: ImageTexture({ src: skyline })
               }))
+
         
-              const { program, vertexArray } = cell.read(Shader({
-                vs: `
-                  attribute vec2 pos;
-                  attribute float force;
-                  uniform mat4 uProjection;
-                  varying float vForce;
-                  varying vec2 vPos;
-          
-                  void main() {
-                    gl_Position = uProjection * vec4(pos.x, pos.y, 0.0, 1.0);
-                    gl_PointSize = 5.0 * force * 7.0;
-                    vForce = force;
-                    vPos = pos;
-                  }
-                `,
-                fs: `
-                  precision highp float;
-                  varying float vForce;
-                  uniform sampler2D uImage;
-                  varying vec2 vPos;
-          
-                  void main() {
-                    vec2 texPos = vec2((vPos.x + 16.) / 32., (vPos.y + 9.) / 18.);
-                    gl_FragColor = texture2D(uImage, texPos);
-
-                    // gl_FragColor = vec4(1.0, 0.0, 1.0, 0.5 + vForce);
-                  }
-                `
-              })) || ({} as any)
-              if (!program) return
-
-              const pos = cell.read(VertexArrayBuffer({ data: 'skyline/pos.vec2' }))
-              const force = cell.read(VertexArrayBuffer({ data: 'skyline/force.float' }))
-
-              if (!pos || !force) return
-            
-              const vertexCount = pos.count
-              if (!vertexCount) return
-
-              vertexArray.setAttributes({
-                pos: pos.buffer,
-                force: force.buffer,
-              })
-
-              const uProjection = cell.read(Camera.uProjection)
               const stageVerts = cell.read(Stage.aPosition)
 
               const bleed = cell.read(Shader({
@@ -216,29 +178,14 @@ const lumaLoop = new Luma.AnimationLoop({
                 aPosition: stageVerts
               })
 
-              drawStage.program.draw({
-                vertexArray: drawStage.vertexArray,
-                vertexCount: QUAD_VERTS.length / 3,
-                drawMode: GL.TRIANGLE_STRIP,
-                uniforms: {
-                  uColor: src.color,
-                }
-              })
-          
-              const draw = () => program.draw({
-                vertexArray,
-                vertexCount,
-                drawMode: GL.POINTS,
-                uniforms: {
-                  uProjection,
-                  uImage: cell.read(ImageTexture({ src: skyline }))
-                }
-              })
-          
-              Luma.withParameters(gl, {
-                // [GL.BLEND]: true,
-                // blendFunc: [GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA]
-              }, draw)
+              // drawStage.program.draw({
+              //   vertexArray: drawStage.vertexArray,
+              //   vertexCount: QUAD_VERTS.length / 3,
+              //   drawMode: GL.TRIANGLE_STRIP,
+              //   uniforms: {
+              //     uColor: src.color,
+              //   }
+              // })          
             }
           }</Eval>
         </Loop>,
