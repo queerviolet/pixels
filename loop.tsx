@@ -177,13 +177,6 @@ class EvaluationError extends Error {
   }
 }
 
-
-// const withEvaluator: <T>(evaluator: Evaluator, input: T) => T & HasEvaluator =
-//   (evaluator, input) => {
-//     (input as any).evaluator = evaluator
-//     return input as typeof input & HasEvaluator
-//   }
-
 export const useRead = (input: React.ReactElement) => {
   const $ = useContext(Context)
   const [value, setValue] = useState($ && $(input))
@@ -194,34 +187,6 @@ export const useRead = (input: React.ReactElement) => {
   }, [input])
   return value
 }
-
-type Renderer = (cell: Cell) => React.ReactElement
-const None: Renderer = () => null
-
-// export const Evaluate: <P>(evaluator: Evaluator, render?: Renderer) => (props: P) => React.ReactElement
-//   = (evaluator, render=None) => {
-//     const Component = withEvaluator(
-//       evaluator,
-//       forwardRef((props: any, ref: React.Ref<any>) => {
-//         const $ = useContext(Context)
-//         const cell = $(<Component {...props} />)
-//         React.useImperativeHandle(ref, () => cell, [cell])
-//         return render(cell)
-//       })
-//     )
-//     Component.displayName = evaluator.name
-//     return Component
-//   }
-
-// interface WithValue { value: any }
-// interface WithInput { input: Pattern }
-// export const Value = Evaluate<WithValue>(({ value }) => value)
-
-// export function Print({ input }) {
-//   const value = useRead(input).value
-//   console.log(input, '->',  value)
-//   return value || 'no value'
-// }
 
 type Evaluator = (inputs: any, cell: Cell) => any
 type Disposer<T> = (value: T) => void
