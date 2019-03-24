@@ -21,8 +21,16 @@
   }
 
   .cell-inspector {
-    max-width: 20vw;
-    overflow: hidden;
+    width: 20vw;
+    min-width: 16em;
+    max-height: 100vh;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .cell-inspector::-webkit-scrollbar {
+    display: none;
   }
 
   .cell-inspector-cell {
@@ -34,6 +42,9 @@
     margin: 2px;
     border: 1px solid rgb(115, 213, 255);
     border-radius: 6px;
+
+    backdrop-filter: blur(5px);
+    background: rgba(0, 0, 0, 0.5);
   }
 
   .cell-inspector-cell.dead {
@@ -49,7 +60,7 @@
     text-align: right;
     margin-left: auto;
     margin-right: 0.5em;
-    font-family: 'Source Code Pro', Inconsolata;
+    font-family: Menlo;
   }
 
   .spark-line {

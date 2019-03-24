@@ -117,7 +117,7 @@ const lumaLoop = new Luma.AnimationLoop({
     loop(Stage.aPosition).write(new Luma.Buffer(gl, QUAD_VERTS))
     loop(Stage.uCount).write(QUAD_VERTS.length / 3)
 
-    const showInspector = true;
+    const showInspector = false;
     render(
         <Loop loop={loop}>
           {showInspector ? <Inspector /> : null}
