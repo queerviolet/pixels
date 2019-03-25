@@ -6,6 +6,9 @@ import { Seed, Cell, withProps } from './loop'
 
 import Data, { write } from 'parcel-plugin-writable/src/node'
 import { vec2, float } from 'parcel-plugin-writable/src/struct'
+import prez from './scenes'
+window['SLIDES'] = prez
+
 
 import GL from 'luma.gl/constants'
 import { Matrix4, radians } from 'math.gl'
@@ -36,6 +39,7 @@ import Layers from './layers'
 
 import defaultClient from './parcel-plugin-writable/src/client'
 import { Framebuffer } from './framebuffer'
+import Player from './player'
 
 const BLEED = Rumination({
   uniforms: {
@@ -117,11 +121,12 @@ const lumaLoop = new Luma.AnimationLoop({
     loop(Stage.aPosition).write(new Luma.Buffer(gl, QUAD_VERTS))
     loop(Stage.uCount).write(QUAD_VERTS.length / 3)
 
-    const showInspector = false;
+    const showInspector = true;
     render(
         <Loop loop={loop}>
           {showInspector ? <Inspector /> : null}
-          <Eval>{
+          <Player play={prez} />
+          {/* <Eval>{
             (_, cell) => {
               cell.read(RecordStroke({ node: 'skyline' }))
         
@@ -145,11 +150,11 @@ const lumaLoop = new Luma.AnimationLoop({
               } as any))
 
               cell.read(Layers([
-                { output: points.color, opacity: 0.5 },
-                { output: bleed.output, opacity: 1.0 },
+                { output: points, opacity: 0.5 },
+                { output: bleed, opacity: 1.0 },
               ]))
             }
-          }</Eval>
+          }</Eval> */}
         </Loop>,
       document.getElementById('main'))
 

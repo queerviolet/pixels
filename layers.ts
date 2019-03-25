@@ -7,8 +7,9 @@ import Shader from './shader'
 import { GLContext, Stage } from './contexts'
 
 export type Layer = {
-  output: Texture2D
+  output?: Texture2D
   opacity?: number
+  destination?: Framebuffer
 }
 
 const STAGE_SHADER = Shader({
@@ -34,7 +35,6 @@ const STAGE_SHADER = Shader({
 })
 
 const getTexture = (cell: Cell, val: any) => {
-  console.log(val)
   if (!val) return val
   if (val instanceof Pattern) return getTexture(cell, cell.read(val))
   if (val instanceof Texture2D) return val
@@ -53,15 +53,22 @@ export default function Layers(layers: Layer[], cell?: Cell) {
 
   stage.vertexArray.setAttributes({ aPosition })  
 
+  const last = layers[layers.length - 1]
+  let framebuffer = undefined
+  if (last && last.destination) {
+    framebuffer = last.destination
+  }
+
   withParameters(gl, {
     [GL.BLEND]: true,
-    blendFunc: [GL.ONE, GL.SRC_ALPHA]
+    blendFunc: [GL.ONE, GL.SRC_ALPHA],
+    framebuffer
   }, () => {
     // TODO: Invalidate framebuffers when we draw to
     // avoid having to do this.
-    cell.invalidate()
+    cell.invalidate()    
 
-    // gl.clear(GL.COLOR_BUFFER_BIT)
+    gl.clear(GL.COLOR_BUFFER_BIT)
     let i = layers.length; while (i --> 0) {
       const input = layers[i]
       const layer = cell.read(input)

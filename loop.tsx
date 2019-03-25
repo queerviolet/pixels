@@ -296,7 +296,7 @@ export class Cell {
   public outputs: { [key: string]: Cell } = {}
   public inputs: Cell[] = []
 
-  public read(pattern: any): any {
+  public read<T=any>(pattern: any): T {
     return this.get(pattern).value
   }
 
