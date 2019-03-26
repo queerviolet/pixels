@@ -6,6 +6,10 @@ import { Context as Lifeform, Eval } from './loop'
 import { Framebuffer } from './framebuffer'
 import Layers from './layers'
 
+import Inspector from './inspector'
+import { bool } from 'prop-types';
+
+
 export interface Props {
   play: Presentation
 }
@@ -15,11 +19,15 @@ const BEAT = 'Presentation.currentBeat'
 export default function Player({ play }: Props) {
   const grow = useContext(Lifeform)
   const [beat, go] = useReducer(
-    (beat, action) =>
+    (beat: Beat, action: 'next' | 'prev') =>
       action === 'next'
         ? beat.next ? beat.next : beat
         : beat.prev ? beat.prev : beat
     , play.first)
+  
+  const [showInspector, toggleInspector] = useReducer(
+    (isVisible: boolean) => !isVisible, false
+  )
   
   useEffect(() => {
     console.log('Beat is now:', beat)
@@ -40,6 +48,9 @@ export default function Player({ play }: Props) {
       case 'ArrowUp':
       case 'PageUp':
         return go('prev')
+
+      case '`':
+        return toggleInspector('toggle')
       }
     }
   }, [])
@@ -55,5 +66,6 @@ export default function Player({ play }: Props) {
       }
     }</Eval>
     { beat.overlay ? beat.overlay : null }
+    { showInspector ? <Inspector /> : null }
   </>
 }
