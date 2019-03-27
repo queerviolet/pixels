@@ -3,6 +3,7 @@ const { useState, useEffect, useContext } = React
 
 import { ReactComponentLike } from 'prop-types'
 import createEvent, { Event, Emitter } from './event'
+import { useMemo } from 'react'
 
 export const Context = React.createContext<CellContext>(null)
 
@@ -65,27 +66,27 @@ const statDelta = (now, prev) => ({
 export default function Run({
   loop, children
 }: { loop: CellContext, children?: any }) {
-  const [ isReady, setIsReady ] = useState<boolean>(false)
-  useEffect(() => {
-    if (!loop) {
-      throw new Error('loop must be provided to Run')
-    }
-    setIsReady(true)
-    const stats = {
-      batch: 0, evaluations: 0,
-    }
-    let prev = {batch: 0, evaluations: 0}
-    return loop.onDidEvaluate((cells) => {
-      stats.evaluations += cells.size
-      ++stats.batch
-      if (stats.batch % 200 === 0) {
-        console.table({delta: statDelta(stats, prev), current: stats, prev})
-        prev = {...stats}
-      }
-    })
-  }, [loop])
+  // const [ isReady, setIsReady ] = useState<boolean>(false)
+  // useEffect(() => {
+  //   if (!loop) {
+  //     throw new Error('loop must be provided to Run')
+  //   }
+  //   setIsReady(true)
+  //   const stats = {
+  //     batch: 0, evaluations: 0,
+  //   }
+  //   let prev = {batch: 0, evaluations: 0}
+  //   return loop.onDidEvaluate((cells) => {
+  //     stats.evaluations += cells.size
+  //     ++stats.batch
+  //     if (stats.batch % 200 === 0) {
+  //       console.table({delta: statDelta(stats, prev), current: stats, prev})
+  //       prev = {...stats}
+  //     }
+  //   })
+  // }, [loop])
 
-  if (!isReady) return null
+  // if (!isReady) return null
 
   return <Context.Provider value={loop}>
     {children}
@@ -99,10 +100,15 @@ type EvalProps = {
 
 const isKey = (key: any) => key instanceof Pattern || typeof key === 'string'
 let nextEvalId = 0
-export function Eval({ id=`anonymous/${nextEvalId++}`, children }: EvalProps) {
+export function Eval(props: EvalProps) {
+  const { children } = props
+  const id = useMemo(() => props.id || `anonymous/${nextEvalId++}`, [props.id])
   const loop = useContext(Context)
-  loop(id, children).evaluator = children
-  loop(id, children).invalidate()
+  const cell = loop(id, children)
+  if (cell.evaluator !== children) {
+    loop(id, children).evaluator = children
+    loop(id, children).invalidate()
+  }
   return null
 }
 

@@ -58,10 +58,21 @@ export default function Player({ play }: Props) {
   return <>
     <Eval>{
       (_, cell) => {
-        // cell.effect<{last: Beat}>('last-beat', _ => _({ last: null }))
-        const newBeat = cell.read<Beat>(BEAT)
+        const last = cell.effect<{beat: Beat}>('last-beat', _ => {
+          console.log('starting up effect')
+          _({ beat: null })
+        }, [])
+
+        const currentBeat = cell.read<Beat>(BEAT)
+        if (currentBeat !== last.beat) {
+          console.log('changing from', last.beat, 'to', currentBeat)
+          last.beat = currentBeat
+        }
+        if (!currentBeat) return
+
         const output = cell.readChild(Framebuffer())
-        cell.read(newBeat.draw.withProps({ output }))
+        
+        cell.read(currentBeat.draw.withProps({ output }))
         cell.read(Layers([ output ]))
       }
     }</Eval>
