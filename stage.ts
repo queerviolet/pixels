@@ -12,7 +12,10 @@ const MAX: StageCoordinates = [X_MAX, Y_MAX]
 export const STAGE: StageRect = [MIN, MAX]
 
 let frame: Box | null = null
-applyLetterbox(WIDTH / HEIGHT, box => frame = box)
+applyLetterbox(WIDTH / HEIGHT, box => {
+  frame = box
+  document.body.style.setProperty('--su', frame.width / (WIDTH * 2) + 'px')
+})
 
 export const STAGE_QUAD = [
   X_MAX, Y_MAX, 0,
