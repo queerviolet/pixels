@@ -14,7 +14,7 @@ import Shader from '../shader'
 import skyline from '../manila-skyline.jpg'
 import { Cell, Seed } from '../loop'
 import { GRID_3x3, hbox, STAGE } from '../stage'
-import { Panel } from '../panel'
+import Code from '../code'
 
 export default {
   'Bleed them together': {
@@ -23,7 +23,7 @@ export default {
   'Look at the shader': {
     draw: Bleed(),
     overlay: <>
-      <Panel file='./scenes/bleed.tsx' frame={hbox(STAGE)[0]} />
+      <Code src='./scenes/bleed.tsx' frame={hbox(STAGE)[0]} />
     </>
   }
 }

@@ -1,6 +1,6 @@
 @import './colors.less';
 
-@title-bar-height: 32px;
+@title-bar-height: calc(0.65 * var(--su));
 
 .panel {
   .rounded();
@@ -13,7 +13,6 @@
   background: fadeout(darken(@blue, 80%), 20%);
   border: 1px solid @blue;
   padding: 0;
-  backdrop-filter: blur(5px);
   overflow: hidden;
   box-shadow: 5px 5px 10px fadeout(@blue, 80%);
 
