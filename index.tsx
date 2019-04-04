@@ -54,23 +54,23 @@ const lumaLoop = new Luma.AnimationLoop({
       depthFunc: GL.LEQUAL,
     })
 
-    const loop = createLoop()
-    window['LOOP'] = loop    
+    const $ = createLoop()
+    window['LOOP'] = $    
 
-    loop(GLContext).write(gl)
-    loop(DataContext).write(defaultClient)
-    loop(Camera.uProjection).write(new Matrix4().ortho({
+    $(GLContext).write(gl)
+    $(DataContext).write(defaultClient)
+    $(Camera.uProjection).write(new Matrix4().ortho({
       top: -9,
       bottom: 9,
       left: -16,
       right: 16, 
       near: -0.1, far: 100
     }))
-    loop(Stage.aPosition).write(new Luma.Buffer(gl, QUAD_VERTS))
-    loop(Stage.uCount).write(QUAD_VERTS.length / 3)
+    $(Stage.aPosition).write(new Luma.Buffer(gl, QUAD_VERTS))
+    $(Stage.uCount).write(QUAD_VERTS.length / 3)
 
     render(
-        <Loop loop={loop}>
+        <Loop loop={$}>
           <Player play={prez} />
         </Loop>,
       document.getElementById('main'))
@@ -78,13 +78,13 @@ const lumaLoop = new Luma.AnimationLoop({
     canvas.style = ''
     
     return {
-      loop     
+      $     
     }
   },
 
-  onRender({ tick, loop, }) {
-    loop(Clock).write(tick)
-    loop.run(tick)
+  onRender({ tick, $, }) {
+    $(Clock).write(tick)
+    $.run(tick)
   },
 })
 

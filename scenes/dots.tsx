@@ -19,9 +19,10 @@ export default {
 
 function Dots(props: { src?: string, output?: any }={}, cell?: Cell) {
   if (!cell) return Seed(Dots, props)
+  const uImage =  ImageTexture({ src: props.src || ashi })
   return cell.read(Points({
     node: 'skyline',
-    uImage: ImageTexture({ src: props.src || ashi }),
+    uImage,
     output: props.output,
   }))
 }

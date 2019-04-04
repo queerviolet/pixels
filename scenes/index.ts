@@ -3,7 +3,13 @@ import { ReactElement } from 'react'
 import dots from './dots'
 import bleed from './bleed'
 import { Pattern } from 'loop';
-import { string } from 'prop-types';
+
+const presentation = createPresentation({
+  dots,
+  bleed
+})
+
+export default presentation
 
 export interface Presentation {
   scenes: { [title: string]: Scene }
@@ -32,12 +38,6 @@ export type Beat = Navigable & {
   overlay?: ReactElement
   note?: string
 }
-
-const presentation = createPresentation({
-  dots, bleed
-})
-
-export default presentation
 
 type Script = {
   [scene: string]: {
