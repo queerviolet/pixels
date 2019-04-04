@@ -2,8 +2,7 @@ import * as React from 'react'
 import { basename } from 'path'
 import useSource from './use-source'
 
-import { StageCoordinates, StageRect, pixelRect } from './stage'
-
+import { StageRect, pixelRect } from './stage'
 
 type Props = {
   file: string
