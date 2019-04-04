@@ -1,3 +1,5 @@
+import * as React from 'react'
+
 import RecordStroke from '../record-stroke'
 
 import { Framebuffer } from '../framebuffer'
@@ -11,10 +13,18 @@ import Shader from '../shader'
 // @ts-ignore
 import skyline from '../manila-skyline.jpg'
 import { Cell, Seed } from '../loop'
+import { GRID_3x3, hbox, STAGE } from '../stage'
+import { Panel } from '../panel'
 
 export default {
   'Bleed them together': {
     draw: Bleed()
+  },
+  'Look at the shader': {
+    draw: Bleed(),
+    overlay: <>
+      <Panel file='./scenes/bleed.tsx' frame={hbox(STAGE)[0]} />
+    </>
   }
 }
 

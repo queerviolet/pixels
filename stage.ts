@@ -7,8 +7,9 @@ const Y_MIN = -HEIGHT
 const X_MAX = WIDTH
 const Y_MAX = HEIGHT
 
-const MIN = [X_MIN, Y_MIN]
-const MAX = [X_MAX, Y_MAX]
+const MIN: StageCoordinates = [X_MIN, Y_MIN]
+const MAX: StageCoordinates = [X_MAX, Y_MAX]
+export const STAGE: StageRect = [MIN, MAX]
 
 let frame: Box | null = null
 applyLetterbox(WIDTH / HEIGHT, box => frame = box)
@@ -56,4 +57,25 @@ export function pixelRect([p0, p1]: StageRect) {
   }
 }
 
-export function vbox() {}
+const widthOfRect = (r: StageRect) => r[1][0] - r[0][0]
+const heightOfRect = (r: StageRect) => r[1][1] - r[0][1]
+
+export const vbox = (container: StageRect, count=3, margin=0.1): StageRect[] => {
+  const contentHeight = (heightOfRect(container) - margin * (count + 1)) / count
+  const advance = contentHeight + margin
+  return Array.from({length: count}, (_, i) => [
+    [container[0][0] + margin, container[0][1] + i * advance + margin],
+    [container[1][0] - margin, container[0][1] + (i + 1) * advance - margin],
+  ]) as StageRect[]
+}
+
+export const hbox = (container: StageRect, count=3, margin=0.1): StageRect[] => {
+  const contentHeight = (widthOfRect(container) - margin * (count + 1)) / count
+  const advance = contentHeight + margin
+  return Array.from({length: count}, (_, i) => [
+    [container[0][0] + i * advance + margin, container[0][1] + margin],
+    [container[0][0] + (i + 1) * advance - margin, container[1][1] - margin],
+  ]) as StageRect[]
+}
+
+export const GRID_3x3 = hbox(STAGE).map(r => vbox(r))
