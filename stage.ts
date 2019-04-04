@@ -63,7 +63,7 @@ export function pixelRect([p0, p1]: StageRect) {
 const widthOfRect = (r: StageRect) => r[1][0] - r[0][0]
 const heightOfRect = (r: StageRect) => r[1][1] - r[0][1]
 
-export const vbox = (container: StageRect, count=3, margin=0.1): StageRect[] => {
+export const vbox = (container: StageRect, count=3, margin=0.3): StageRect[] => {
   const contentHeight = (heightOfRect(container) - margin * (count + 1)) / count
   const advance = contentHeight + margin
   return Array.from({length: count}, (_, i) => [
@@ -72,7 +72,7 @@ export const vbox = (container: StageRect, count=3, margin=0.1): StageRect[] => 
   ]) as StageRect[]
 }
 
-export const hbox = (container: StageRect, count=3, margin=0.1): StageRect[] => {
+export const hbox = (container: StageRect, count=3, margin=0.3): StageRect[] => {
   const contentHeight = (widthOfRect(container) - margin * (count + 1)) / count
   const advance = contentHeight + margin
   return Array.from({length: count}, (_, i) => [

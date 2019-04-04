@@ -10,26 +10,32 @@
   right: var(--panel-right);
   bottom: var(--panel-bottom);
 
-  background: fadeout(@blue, 90%);
+  background: fadeout(darken(@blue, 80%), 20%);
   border: 1px solid @blue;
   padding: 0;
   backdrop-filter: blur(5px);
   overflow: hidden;
   box-shadow: 5px 5px 10px fadeout(@blue, 80%);
 
+  > .content {
+    position: absolute;
+    top: @title-bar-height;
+    left: 0; bottom: 0; right: 0;
+    overflow: auto;
+  }
+
   h1 {
     color: black;
     margin: 0;
-    padding-left: 6px;
+    padding-left: calc(0.26 * var(--su));
     height: @title-bar-height;
     line-height: @title-bar-height;    
-    font-size: 20px;
+    font-size: calc(0.26 * var(--su));
     font-family: 'Menlo', 'Source Code Pro';
     animation: glow 1000ms forwards;
   }
 
   code {
-    font-size: 20px;
     margin: 6px;
     display: block;
     white-space: pre;

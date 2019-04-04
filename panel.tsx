@@ -35,7 +35,9 @@ export function Panel({ file, frame=[[-5, -5], [5, 5]] }: Props) {
 
   return <div className={`panel ${src ? 'loaded' : ''}`} style={styleFromFrame(frame)}>
     <h1>{name}</h1>    
-    <Code language='typescript'>{src}</Code>
+    <div className='content'>
+      <Code language='typescript'>{src}</Code>
+    </div>
   </div>
 }
 
