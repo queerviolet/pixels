@@ -1,0 +1,38 @@
+@WIDTH: 32;
+@HEIGHT: 18;
+
+@X-MIN: -@WIDTH / 2;
+@X-MAX: @WIDTH / 2;
+@Y-MIN: -@HEIGHT / 2;
+@Y-MAX: @HEIGHT / 2;
+
+.stage-point(@x, @y) {
+  @t-x: (@x - @X-MIN) / @WIDTH;
+  @t-y: (@y - @Y-MIN) / @HEIGHT;
+  @top: calc(var(--letterbox-top) + (var(--letterbox-height) * @t-y));
+  @left: calc(var(--letterbox-left) + (var(--letterbox-width) * @t-x));
+  @bottom: calc(var(--letterbox-bottom) + (var(--letterbox-height) * (1 - @t-y)));
+  @right: calc(var(--letterbox-right) + (var(--letterbox-width) * (1 - @t-x)));
+}
+
+.rect(@x0: @X-MIN, @y0: @Y-MIN, @x1: @X-MAX, @y1: @Y-MAX) {
+  position: fixed;
+  z-index: 300;
+  --rect-x0: @x0;
+  --rect-x1: @x1;
+  --rect-y0: @y0;
+  --rect-y1: @y1;
+  --t-x0: .stage-point(@x0, @y0)[@t-x];
+  --t-y0: .stage-point(@x0, @y0)[@t-y];
+  --t-x1: .stage-point(@x1, @y1)[@t-x];
+  --t-yt: .stage-point(@x1, @y1)[@t-y];
+
+  @height: calc(1px * (.stage-point(@x1, @y1)[@top] - .stage-point(@x0, @y0)[@top]));
+  @width: calc(1px * (.stage-point(@x1, @y1)[@left] - .stage-point(@x0, @y0)[@left]));
+  
+  top: .stage-point(@x0, @y0)[@top];
+  left: .stage-point(@x0, @y0)[@left];
+  bottom: .stage-point(@x1, @y1)[@bottom];
+  right: .stage-point(@x1, @y1)[@right];
+  // bottom: 100px; right: 100px;
+}

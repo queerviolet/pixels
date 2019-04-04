@@ -1,9 +1,16 @@
 @import './colors.less';
+@import './stage.less';
 
 @title-bar-height: 32px;
 
 .panel {
-  .rounded();  
+  .rounded();
+  position: fixed;
+  top: var(--panel-top);
+  left: var(--panel-left);
+  right: var(--panel-right);
+  bottom: var(--panel-bottom);
+
   background: fadeout(black, 50%);
   border: 1px solid @blue;
   padding: 0;
@@ -47,7 +54,7 @@
 @keyframes slide-in {
   0% {
     transform: translateX(-100%);
-    height: @title-bar-height;
+    height: @title-bar-height;    
   }
 
   50% {
@@ -57,6 +64,6 @@
 
   100% {
     transform: translateX(0%);
-    height: 33vh;
+    height: var(--panel-height);
   }
 }
