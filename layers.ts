@@ -61,7 +61,7 @@ export default function Layers(layers: Layer[], cell?: Cell) {
 
   withParameters(gl, {
     [GL.BLEND]: true,
-    blendFunc: [GL.ONE, GL.SRC_ALPHA],
+    blendFunc: [GL.SRC_ALPHA, GL.DST_ALPHA],
     framebuffer
   }, () => {
     // TODO: Invalidate framebuffers when we draw to

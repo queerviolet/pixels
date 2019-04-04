@@ -11,6 +11,7 @@ import Layers from './layers'
 import Inspector from './inspector'
 
 import * as Luma from 'luma.gl'
+import { Clock } from './contexts';
 
 
 export interface Props {
@@ -29,13 +30,13 @@ export default function Player({ play }: Props) {
   const grow = useContext(Lifeform)
   const [state, go] = useReducer(
     ({current: beat}: State, action: 'next' | 'prev') => ({
-      ts: performance.now(),
+      ts: grow(Clock).value || 0,
       current: action === 'next'
           ? beat.next ? beat.next : beat
           : beat.prev ? beat.prev : beat,
       prev: beat,
     }), {
-      ts: performance.now(),
+      ts: grow(Clock).value || 0,
       prev: null,
       current: play.first,
     })
@@ -86,17 +87,26 @@ export default function Player({ play }: Props) {
 
         const state = cell.read<State>(STATE)
         if (!state) return
-        const { current } = state
+        const { current, prev } = state
         // if (current !== last.beat) {
         //   console.log('changing from', last.beat, 'to', current)
         //   last.beat = current
         // }
-        if (!current) return
+        // if (!current) return
 
         // const output = cell.readChild(Framebuffer({name: 'output'}))
 
         // cell.read(current.draw.withProps({ output }))
-        cell.read(Layers([ DrawTexture({ draw: current.draw }) ]))
+
+        // const start = state.ts
+        // const end = start + 20
+        // const now = cell.read(Clock)
+        // const t = Math.min(1.0, (now - start) / (end - start))
+
+        cell.read(Layers([
+          { output: DrawTexture({ draw: current && current.draw }), opacity: 1 },
+          // { output: DrawTexture({ draw: prev && prev.draw }), opacity: 1.0 - t },
+        ]))
       }
     }</Eval>
     { state.current.overlay ? state.current.overlay : null }

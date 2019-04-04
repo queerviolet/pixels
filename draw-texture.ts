@@ -13,5 +13,6 @@ export interface Props {
 export default function DrawTexture(props: Props, cell?: Cell) {
   if (!cell) return Seed(DrawTexture, props)
   const output = cell.readChild(Framebuffer({name: 'output'}))
-  return cell.read(props.draw.withProps({ output }))
+  props.draw && cell.read(props.draw.withProps({ output }))
+  return output
 }
