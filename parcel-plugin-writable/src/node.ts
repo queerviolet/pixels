@@ -1,10 +1,11 @@
-import { Message, Location } from './message'
+import { DataMessage, Location, Message } from './message'
 
 // const Node_path = Symbol('Path to data node')
 // const Node_column = Symbol('Column path')
 const Data_message = Symbol('Data message to lead column with')
 
 import { Shape, Frame, dtype, setLayout, getContext, getBuffer, setContext, hasFrame, malloc, getLayout, establishFrame, View } from './struct'
+import createEvent from './event'
 import defaultClient from './client'
 
 export type Node = { dtype: dtype, __$Node__: 'A data node' }
@@ -28,6 +29,26 @@ export default function <T extends dtype>(node: string='/', column: string[], ty
   return array as Float32Array & Node
 }
 
+export function readSource(file: string): Promise<string> {
+  return new Promise(resolve => {
+    const srcPeer = createEvent<PeerMessage, PeerMethods>(() => {
+      defaultClient.emit({ type: 'read source?', file })
+
+      return { send }
+
+      function send(msg: Message) {
+        if (msg.type === 'source' && msg.file === file) {
+          disconnect()
+          resolve(msg.content)
+        }
+      }
+    })
+    const disconnect = defaultClient.connect(srcPeer, 'Source peer reading ' + file)
+  })
+}
+
+window['readSource'] = readSource
+
 export function write(column: ArrayBufferView & Node) {
   // const dataMsg = getDataMessage(node)
   // defaultClient.emit(dataMsg, getBuffer(node))
@@ -35,6 +56,7 @@ export function write(column: ArrayBufferView & Node) {
 }
 
 import { join } from 'path'
+import { PeerMessage, PeerMethods } from './peer';
 export function getPath(node: any) {
   const data = node [Data_message]
   return join(data.node, data.column.join('.'))
@@ -45,7 +67,7 @@ export function getLocation(node: any): Location {
   return { node: data.node, column: data.column }
 }
 
-export function getDataMessage(node: any): Message {
+export function getDataMessage(node: any): DataMessage {
   return node [Data_message]
 }
 

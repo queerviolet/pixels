@@ -1,3 +1,5 @@
+import * as React from 'react'
+
 import { Cell, Seed } from '../loop'
 import Points from '../points'
 import ImageTexture from '../image-texture'
@@ -11,6 +13,10 @@ import ashi from '../ashi-headshot-02.jpg'
 export default {
   'Me made of dots': {
     draw: Dots(),
+  },
+  'Me made of dots with code': {
+    draw: Dots(),
+    overlay: <h1>Hi!</h1>
   },
   'Skyline': {
     draw: Dots({ src: skyline })

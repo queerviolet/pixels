@@ -1,11 +1,16 @@
 import createHub, { Hub } from './hub'
 import createPeer, { Connection, Data, ConnectionMethods, PeerMessage, PeerMethods } from './peer'
-import createEvent from './event'
+import createEvent, { Event } from './event'
 import { Message } from './message';
 
 type ClientMethods = PeerMethods & {
   emit: (message: Message, data?: Data) => void
   connect: Hub
+}
+
+type ClientInterface = Event<PeerMessage> & PeerMethods & {
+  emit: (message: Message, data?: Data) => void;
+  connect: Hub;
 }
 
 const Client = (connect: Hub) => createEvent<PeerMessage, ClientMethods>((emit, from) => ({
@@ -82,7 +87,7 @@ const ServerConnection = (url=`ws://${location.host}/__data__/`) =>
     }
   })
 
-function createClient() {
+function createClient(): ClientInterface {
   if ((window as any).__Client) return (window as any).__Client
   const connect = createHub()
   const server = (window as any).__Server || ((window as any).__Server = ServerConnection())
