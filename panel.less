@@ -1,0 +1,62 @@
+@import './colors.less';
+
+@title-bar-height: 32px;
+
+.panel {
+  .rounded();  
+  background: fadeout(black, 50%);
+  border: 1px solid @blue;
+  padding: 0;
+  backdrop-filter: blur(5px);
+  overflow: hidden;
+  box-shadow: 5px 5px 10px fadeout(@blue, 80%);
+
+  h1 {
+    color: black;
+    margin: 0;
+    padding-left: 6px;
+    height: @title-bar-height;
+    line-height: @title-bar-height;    
+    font-size: 20px;
+    font-family: 'Menlo', 'Source Code Pro';
+    animation: glow 1000ms forwards;
+  }
+
+  code {
+    font-size: 20px;
+    margin: 6px;
+    display: block;
+    white-space: pre;
+  }
+
+  animation: slide-in 600ms forwards;
+}
+
+@keyframes glow {
+  0% {
+    background: @blue;
+    color: black;
+  }
+
+  100% {
+    background: fadeout(@blue, 50%);
+    color: white;
+  }
+}
+
+@keyframes slide-in {
+  0% {
+    transform: translateX(-100%);
+    height: @title-bar-height;
+  }
+
+  50% {
+    transform: translateX(0%); 
+    height: @title-bar-height;   
+  }
+
+  100% {
+    transform: translateX(0%);
+    height: 33vh;
+  }
+}

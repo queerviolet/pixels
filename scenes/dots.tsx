@@ -9,6 +9,7 @@ import skyline from '../manila-skyline.jpg'
 
 // @ts-ignore
 import ashi from '../ashi-headshot-02.jpg'
+import { Panel } from '../panel'
 
 export default {
   'Me made of dots': {
@@ -16,7 +17,7 @@ export default {
   },
   'Me made of dots with code': {
     draw: Dots(),
-    overlay: <h1>Hi!</h1>
+    overlay: <Panel file='./scenes/dots.tsx' />
   },
   'Skyline': {
     draw: Dots({ src: skyline })

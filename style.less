@@ -1,0 +1,21 @@
+@import './inspector.less';
+@import './panel.less';
+
+body { background: black; color: white; }
+
+canvas {
+  position: fixed;
+  width: var(--letterbox-width);
+  height: var(--letterbox-height);
+  top: var(--letterbox-top);
+  left: var(--letterbox-left);
+}
+
+canvas {
+  z-index: 100;
+}
+
+#main {
+  position: fixed;
+  z-index: 200;
+}
