@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useContext, useReducer, useEffect } from 'react'
+import { useContext, useReducer, useEffect, useState, useMemo } from 'react'
 
 import { Presentation, Beat } from './scenes'
 import { Context as Lifeform, Eval } from './loop'
@@ -13,9 +13,12 @@ import Inspector from './inspector'
 import * as Luma from 'luma.gl'
 import { Clock } from './contexts';
 
+import { state, State as StateNode, Loading } from 'parcel-plugin-writable/src/node'
 
 export interface Props {
   play: Presentation
+  initialBeat?: string
+  playerState: StateNode<string>
 }
 
 const STATE = 'Presentation.state'
@@ -26,19 +29,41 @@ type State = {
   prev: Beat
 }
 
-export default function Player({ play }: Props) {
+type Next = { type: 'next' }
+type Prev = { type: 'prev' }
+type Seek = { type: 'seek', beat: Beat }
+type Action = Next | Prev | Seek
+
+export function Player({ initialBeat, playerState, play }: Props) {
   const grow = useContext(Lifeform)
   const [state, go] = useReducer(
-    ({current: beat}: State, action: 'next' | 'prev') => ({
-      ts: grow(Clock).value || 0,
-      current: action === 'next'
+    (state: State, action: Action) => {
+      const {current: beat} = state
+      const target =
+        action.type === 'next'
           ? beat.next ? beat.next : beat
-          : beat.prev ? beat.prev : beat,
-      prev: beat,
-    }), {
+          :
+        action.type === 'prev'
+          ? beat.prev ? beat.prev : beat
+          :
+          action.beat
+      if (beat === target) return state
+          
+      return {
+        ts: grow(Clock).value || 0,
+        current: action.type === 'next'
+            ? beat.next ? beat.next : beat
+            :
+          action.type === 'prev'
+            ? beat.prev ? beat.prev : beat
+            :
+            action.beat,
+        prev: beat,
+      }
+    }, {
       ts: grow(Clock).value || 0,
       prev: null,
-      current: play.first,
+      current: initialBeat ? play.beats[initialBeat] : play.first,
     })
   
   const [showInspector, toggleInspector] = useReducer(
@@ -48,6 +73,7 @@ export default function Player({ play }: Props) {
   useEffect(() => {
     console.log('State is now:', state)
     grow(STATE).write(state)
+    playerState.set(state.current && state.current.id)
   }, [state])
 
   useEffect(() => {
@@ -58,18 +84,22 @@ export default function Player({ play }: Props) {
       case 'ArrowRight':
       case 'ArrowDown':
       case 'PageDown':
-        return go('next')
+        return go({type: 'next'})
 
       case 'ArrowLeft':
       case 'ArrowUp':
       case 'PageUp':
-        return go('prev')
+        return go({type: 'prev'})
 
       case '`':
         return toggleInspector('toggle')
       }
     }
   }, [])
+
+  useEffect(() =>
+    playerState(id => id && go({ type: 'seek', beat: play.beats[id] })),
+    [])
 
   return <>
     <Eval>{
@@ -112,4 +142,23 @@ export default function Player({ play }: Props) {
     { state.current.overlay ? state.current.overlay : null }
     { showInspector ? <Inspector /> : null }
   </>
+}
+
+export default function SyncPlayer({ play }: Props) {
+  const [initial, setInitial] = useState<string | Loading>(Loading)
+  const playerState = useMemo(() => state<string>('player.state'), [])
+
+  useEffect(() => {
+    const current = playerState.value
+    if (current !== Loading) return setInitial(current)
+    console.log('current=', current)
+    const disconnect = playerState(beat => {
+      console.log('got beat=', beat)
+      setInitial(beat)
+      disconnect()
+    })
+    return disconnect
+  }, [playerState])
+  if (initial === Loading) return 'loading'
+  return <Player play={play} playerState={playerState} initialBeat={initial as string} />
 }

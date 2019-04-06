@@ -5,7 +5,7 @@ import { DataMessage, Location, Message } from './message'
 const Data_message = Symbol('Data message to lead column with')
 
 import { Shape, Frame, dtype, setLayout, getContext, getBuffer, setContext, hasFrame, malloc, getLayout, establishFrame, View } from './struct'
-import createEvent from './event'
+import createEvent, { Event } from './event'
 import defaultClient from './client'
 
 export type Node = { dtype: dtype, __$Node__: 'A data node' }
@@ -47,10 +47,16 @@ export function readSource(file: string): Promise<string> {
   })
 }
 
-type StateMethods<T> = {
+export type Loading = { __isLoading__: true }
+export const Loading: Loading = { __isLoading__: true }
+
+export type StateMethods<T> = {
   set(value: T): void
   disconnect(): void
+  readonly value: T | Loading
 }
+
+export type State<T> = StateMethods<T> & Event<T>
 
 export function state<T>(key: string) {
   let emitValue
@@ -70,12 +76,22 @@ export function state<T>(key: string) {
 
   return createEvent<T, StateMethods<T>>(
     emit => {
-      emitValue = emit
+      emitValue = value => {
+        store = value
+        emit(value)        
+      }
 
-      return { set, disconnect }
+      let store: T | Loading = Loading
+
+      return {
+        set,
+        disconnect,
+        get value() { return store }
+      }
 
       function set(value: T) {
         defaultClient.emit({ type: 'state', key, value })
+        store = value
       }
     }
   )

@@ -3,7 +3,6 @@ import { Peer, PeerMethods, PeerMessage, Data } from './peer'
 import { Message } from './message'
 
 import createEvent from './event'
-import { readFile } from 'fs'
 
 export default (state=new Map): Peer =>
   createEvent<PeerMessage, PeerMethods>((emit, self) => {
