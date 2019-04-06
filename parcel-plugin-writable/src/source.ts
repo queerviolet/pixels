@@ -1,12 +1,10 @@
 const debug = require('debug')('@lumen8/data/source')
 import { Peer, PeerMethods, PeerMessage, Data } from './peer'
-import { Message, Location } from './message'
-import { relative, normalize, resolve, join, dirname, basename } from 'path'
-import { watch } from 'chokidar'
+import { Message,  } from './message'
+import { resolve, } from 'path'
 
 import createEvent from './event'
-import { createWriteStream, WriteStream, mkdirSync, readFile } from 'fs';
-import { byte, setBuffer, establishFrame } from './struct';
+import { readFile } from 'fs'
 
 interface Options {
   sourceDir: string

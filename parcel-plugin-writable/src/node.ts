@@ -47,7 +47,39 @@ export function readSource(file: string): Promise<string> {
   })
 }
 
-window['readSource'] = readSource
+type StateMethods<T> = {
+  set(value: T): void
+  disconnect(): void
+}
+
+export function state<T>(key: string) {
+  let emitValue
+
+  const statePeer = createEvent<PeerMessage, PeerMethods>(() => {
+    defaultClient.emit({ type: 'read state?', key })
+
+    return { send }
+
+    function send(msg: Message) {
+      if (msg.type === 'state' && msg.key === key) {
+        emitValue && emitValue(msg.value)
+      }
+    }
+  })
+  const disconnect = defaultClient.connect(statePeer, 'Source peer for ' + key)
+
+  return createEvent<T, StateMethods<T>>(
+    emit => {
+      emitValue = emit
+
+      return { set, disconnect }
+
+      function set(value: T) {
+        defaultClient.emit({ type: 'state', key, value })
+      }
+    }
+  )
+}
 
 export function write(column: ArrayBufferView & Node) {
   // const dataMsg = getDataMessage(node)
@@ -57,6 +89,7 @@ export function write(column: ArrayBufferView & Node) {
 
 import { join } from 'path'
 import { PeerMessage, PeerMethods } from './peer';
+import { disconnect } from 'cluster';
 export function getPath(node: any) {
   const data = node [Data_message]
   return join(data.node, data.column.join('.'))

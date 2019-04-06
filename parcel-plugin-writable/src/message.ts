@@ -5,7 +5,7 @@ export type Location = {
   column: string[]
 }
 
-export type Message = DataMessage | SourceMessage
+export type Message = DataMessage | SourceMessage | StateMessage
 
 export type DataMessage = { type: 'read?' } & Location |
   { type: 'truncate.' } & Location |
@@ -15,6 +15,10 @@ export type DataMessage = { type: 'read?' } & Location |
 export type SourceMessage =
   { type: 'read source?', file: string } |
   { type: 'source', file: string, content: string }
+
+export type StateMessage =
+  { type: 'read state?', key: string } |
+  { type: 'state', key: string, value: any }
 
 export function parse(input: string): Message {
   const message: Message = JSON.parse(input)

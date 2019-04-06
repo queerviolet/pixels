@@ -6,6 +6,7 @@ import { Server as WebsocketServer, EventEmitter } from 'ws'
 
 import Files from './files'
 import Source from './source'
+import State from './state'
 import createPeer, { Data, Peer, Connection, ConnectionMethods } from './peer'
 import { Message } from './message'
 import Hub from './hub'
@@ -24,6 +25,7 @@ export default function Server({ dataDir, sourceDir, server, wsPath='/__data__/'
   connect(Files({ dataDir }), 'Filesystem peer')
   console.log('adding src peer')
   connect(Source({ sourceDir }), 'Source peer')
+  connect(State(), 'State peer')
 
   server.on('upgrade', (request, socket, head) => {
     const { pathname } = parseUrl(request.url)
