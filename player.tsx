@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useContext, useReducer, useEffect, useState, useMemo } from 'react'
+import { useContext, useReducer, useEffect, useState, useMemo, useRef } from 'react'
 
 import { Presentation, Beat } from './scenes'
 import { Context as Lifeform, Eval } from './loop'
@@ -69,11 +69,16 @@ export function Player({ initialBeat, playerState, play }: Props) {
   const [showInspector, toggleInspector] = useReducer(
     (isVisible: boolean) => !isVisible, false
   )
-  
+
+  const didGesture = useRef<boolean>()
+
   useEffect(() => {
     console.log('State is now:', state)
     grow(STATE).write(state)
-    playerState.set(state.current && state.current.id)
+    if (didGesture.current) {
+      playerState.set(state.current && state.current.id)
+      didGesture.current = false
+    }
   }, [state])
 
   useEffect(() => {
@@ -84,11 +89,13 @@ export function Player({ initialBeat, playerState, play }: Props) {
       case 'ArrowRight':
       case 'ArrowDown':
       case 'PageDown':
+        didGesture.current = true
         return go({type: 'next'})
 
       case 'ArrowLeft':
       case 'ArrowUp':
       case 'PageUp':
+      didGesture.current = true
         return go({type: 'prev'})
 
       case '`':
@@ -159,6 +166,6 @@ export default function SyncPlayer({ play }: Props) {
     })
     return disconnect
   }, [playerState])
-  if (initial === Loading) return 'loading'
+  if (initial === Loading) return <h1>⌚️</h1>
   return <Player play={play} playerState={playerState} initialBeat={initial as string} />
 }
