@@ -38,8 +38,8 @@ export default function Points(props: Props, cell?: Cell) {
       varying vec2 vPos;
 
       void main() {
-        vec2 texPos = vec2((vPos.x + 16.) / 32., (vPos.y + 9.) / 18.);
-        gl_FragColor = vec4(texture2D(uImage, texPos).rgb, 1.0);
+        vec2 texCoord = vec2((vPos.x + 16.) / 32., (vPos.y + 9.) / 18.);
+        gl_FragColor = vec4(texture2D(uImage, texCoord).rgb, 1.0);
       }
     `
   }))

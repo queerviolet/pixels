@@ -13,6 +13,9 @@ import Code from '../code'
 import { GRID_3x3 } from '../stage'
 
 export default {
+  [`I'm going to paint you something`]: {
+    draw: Dots(),
+  },
   'Me made of dots': {
     draw: Dots(),
   },
@@ -38,8 +41,9 @@ export default {
 function Dots(props: { src?: string, output?: any }={}, cell?: Cell) {
   if (!cell) return Seed(Dots, props)
   const uImage =  ImageTexture({ src: props.src || ashi })
+  
   return cell.read(Points({
-    node: 'skyline',
+    node: 'manila',
     uImage,
     output: props.output,
   }))
