@@ -58,36 +58,9 @@ interface CellContext {
   queueForDeath(cell: Cell): void
 }
 
-const statDelta = (now, prev) => ({
-  batch: now.batch - prev.batch,
-  evaluations: now.evaluations - prev.evaluations,
-})
-
 export default function Run({
   loop, children
 }: { loop: CellContext, children?: any }) {
-  // const [ isReady, setIsReady ] = useState<boolean>(false)
-  // useEffect(() => {
-  //   if (!loop) {
-  //     throw new Error('loop must be provided to Run')
-  //   }
-  //   setIsReady(true)
-  //   const stats = {
-  //     batch: 0, evaluations: 0,
-  //   }
-  //   let prev = {batch: 0, evaluations: 0}
-  //   return loop.onDidEvaluate((cells) => {
-  //     stats.evaluations += cells.size
-  //     ++stats.batch
-  //     if (stats.batch % 200 === 0) {
-  //       console.table({delta: statDelta(stats, prev), current: stats, prev})
-  //       prev = {...stats}
-  //     }
-  //   })
-  // }, [loop])
-
-  // if (!isReady) return null
-
   return <Context.Provider value={loop}>
     {children}
   </Context.Provider>
@@ -354,7 +327,7 @@ export class Cell {
 
   public isDead: boolean = false
   public kill() {
-    console.log('Killing cell', this.key, 'at tick', this.context.tick, ' wasForgottenAt=', this.wasForgottenAt)
+    // console.log('Killing cell', this.key, 'at tick', this.context.tick, ' wasForgottenAt=', this.wasForgottenAt)
     this.isDead = true
     Object.values(this.effects)
       .forEach(effect => effect.dispose())
