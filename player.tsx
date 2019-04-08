@@ -13,12 +13,11 @@ import Inspector from './inspector'
 import * as Luma from 'luma.gl'
 import { Clock } from './contexts';
 
-import { state, State as StateNode, Loading } from 'parcel-plugin-writable/src/node'
+import { state as synced, State as StateNode, Loading } from 'parcel-plugin-writable/src/node'
 
 export interface Props {
   play: Presentation
   initialBeat?: string
-  playerState: StateNode<string>
 }
 
 const STATE = 'Presentation.state'
@@ -34,8 +33,9 @@ type Prev = { type: 'prev' }
 type Seek = { type: 'seek', beat: Beat }
 type Action = Next | Prev | Seek
 
-export function Player({ initialBeat, playerState, play }: Props) {
+export default function Player({ play }: Props) {
   const grow = useContext(Lifeform)
+  const playerState = useMemo(() => synced<string>('player.state'), [])
   const [state, go] = useReducer(
     (state: State, action: Action) => {
       const {current: beat} = state
@@ -63,7 +63,7 @@ export function Player({ initialBeat, playerState, play }: Props) {
     }, {
       ts: grow(Clock).value || 0,
       prev: null,
-      current: initialBeat ? play.beats[initialBeat] : play.first,
+      current: playerState.value !== Loading ? play.beats[playerState.value as string] : play.first,//initialBeat ? play.beats[initialBeat] : play.first,
     })
   
   const [showInspector, toggleInspector] = useReducer(
@@ -73,7 +73,7 @@ export function Player({ initialBeat, playerState, play }: Props) {
   const didGesture = useRef<boolean>()
 
   useEffect(() => {
-    console.log('State is now:', state)
+    console.log('State is now:', state.current && state.current.id)
     grow(STATE).write(state)
     if (didGesture.current) {
       playerState.set(state.current && state.current.id)
@@ -104,9 +104,16 @@ export function Player({ initialBeat, playerState, play }: Props) {
     }
   }, [])
 
-  useEffect(() =>
-    playerState(id => id && go({ type: 'seek', beat: play.beats[id] })),
-    [])
+  useEffect(() => {
+    if (playerState.value !== Loading)
+      handleStateChange(playerState.value)
+    
+    return playerState(handleStateChange)
+    
+    function handleStateChange(id) {
+      id && go({ type: 'seek', beat: play.beats[id] })
+    }
+  }, [go])
 
   return <>
     <Eval>{
@@ -151,21 +158,21 @@ export function Player({ initialBeat, playerState, play }: Props) {
   </>
 }
 
-export default function SyncPlayer({ play }: Props) {
-  const [initial, setInitial] = useState<string | Loading>(Loading)
-  const playerState = useMemo(() => state<string>('player.state'), [])
+// export default function SyncPlayer({ play }: Props) {
+//   const [initial, setInitial] = useState<string | Loading>(Loading)
+//   const playerState = useMemo(() => state<string>('player.state'), [])
 
-  useEffect(() => {
-    const current = playerState.value
-    if (current !== Loading) return setInitial(current)
-    console.log('current=', current)
-    const disconnect = playerState(beat => {
-      console.log('got beat=', beat)
-      setInitial(beat)
-      disconnect()
-    })
-    return disconnect
-  }, [playerState])
-  if (initial === Loading) return <h1>⌚️</h1>
-  return <Player play={play} playerState={playerState} initialBeat={initial as string} />
-}
+//   useEffect(() => {
+//     const current = playerState.value
+//     if (current !== Loading) return setInitial(current)
+//     console.log('current=', current)
+//     const disconnect = playerState(beat => {
+//       console.log('got beat=', beat)
+//       setInitial(beat)
+//       disconnect()
+//     })
+//     return disconnect
+//   }, [playerState])
+//   if (initial === Loading) return <h1>⌚️</h1>
+//   return <Player play={play} playerState={playerState} initialBeat={initial as string} />
+// }

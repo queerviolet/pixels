@@ -1,12 +1,15 @@
 import { Seed, Cell } from './loop'
-import { vec2, float } from 'parcel-plugin-writable/src/struct'
+import { vec2, vec4, float } from 'parcel-plugin-writable/src/struct'
 import Data, { write } from './parcel-plugin-writable/src/node'
 import { frameCoordsFrom } from './stage'
 import { GLContext } from './contexts'
 
-type WithNode = { node?: string }
+type Props = {
+  node?: string
+  colorSource?: CanvasRenderingContext2D
+}
 
-export default function RecordStroke(props: WithNode, cell?: Cell) {
+export default function RecordStroke(props: Props, cell?: Cell) {
   if (!cell) return Seed(RecordStroke, props)
   const { node } = props
 
@@ -14,11 +17,14 @@ export default function RecordStroke(props: WithNode, cell?: Cell) {
   if (!gl) return
   const { canvas } = gl
   if (!canvas) return
-  console.log('canvas=', canvas)
+
+  const src = cell.read<CanvasRenderingContext2D>(props.colorSource)
 
   return cell.effect('listen-and-write', () => {    
     const pos = Data(node, ['pos'], vec2)
     const force = Data(node, ['force'], float)
+    const color = Data(node, ['color'], vec4)
+    // color.set([1, 1, 1, 1])
 
     canvas.addEventListener('mousedown', onMouse)
     canvas.addEventListener('mousemove', onMouse)
@@ -36,6 +42,10 @@ export default function RecordStroke(props: WithNode, cell?: Cell) {
         force.set([touch.force])
         write(pos)
         write(force)
+        if (src) {
+          color.set(src.getImageData(touch.clientX, touch.clientY, 1, 1).data)
+        }
+        write(color)
       }
     }
 
@@ -56,7 +66,7 @@ export default function RecordStroke(props: WithNode, cell?: Cell) {
       canvas.removeEventListener('touchmove', onTouch)
       canvas.removeEventListener('touchend', onTouch)
     }
-  }, [node, canvas])
+  }, [node, canvas, src])
 }
 
 

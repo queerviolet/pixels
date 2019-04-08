@@ -12,6 +12,7 @@ export default (state=new Map): Peer =>
 
     function send(msg: Message, _data?: Data) {
       if (msg.type === 'read state?') {
+        debug('read', msg.key, '->', state.get(msg.key))
         return emit({
           from: self,
           message: {
@@ -23,6 +24,7 @@ export default (state=new Map): Peer =>
       }
 
       if (msg.type === 'state') {
+        debug('set', msg.key, '->', msg.value)
         state.set(msg.key, msg.value)
       }
     }

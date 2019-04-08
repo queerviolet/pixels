@@ -62,7 +62,8 @@ export function state<T>(key: string) {
   let emitValue
 
   const statePeer = createEvent<PeerMessage, PeerMethods>(() => {
-    defaultClient.emit({ type: 'read state?', key })
+    process.nextTick(() =>
+      defaultClient.emit({ type: 'read state?', key }))
 
     return { send }
 

@@ -32,14 +32,14 @@ function Bleed(props?, cell?: Cell) {
   if (!cell) return Seed(Bleed, props)
   const { output } = props
 
-  cell.read(RecordStroke({ node: 'skyline' }))
+  cell.read(RecordStroke({ node: 'manila' }))
 
   const bleed = cell.read(BLEED)
 
   if (!bleed) return
 
   cell.read(PaintStroke({
-    node: 'skyline',
+    node: 'manila',
     framebuffer: bleed.input,
     batchSize: 100,
     uImage: ImageTexture({ src: skyline })
