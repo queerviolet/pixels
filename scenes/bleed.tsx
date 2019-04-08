@@ -2,8 +2,6 @@ import * as React from 'react'
 
 import RecordStroke from '../record-stroke'
 
-import { Framebuffer } from '../framebuffer'
-import Points from '../points'
 import ImageTexture from '../image-texture'
 import PaintStroke from '../paint-stroke'
 import Layers from '../layers'

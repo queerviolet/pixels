@@ -106,7 +106,6 @@ export function write(column: ArrayBufferView & Node) {
 
 import { join } from 'path'
 import { PeerMessage, PeerMethods } from './peer';
-import { disconnect } from 'cluster';
 export function getPath(node: any) {
   const data = node [Data_message]
   return join(data.node, data.column.join('.'))

@@ -11,6 +11,7 @@ import skyline from '../manila-skyline.jpg'
 import ashi from '../ashi-headshot-02.jpg'
 import Code from '../code'
 import { GRID_3x3 } from '../stage'
+import RecordStroke from '../record-stroke'
 
 export default {
   [`I'm going to paint you something`]: {
@@ -40,7 +41,8 @@ export default {
 
 function Dots(props: { src?: string, output?: any }={}, cell?: Cell) {
   if (!cell) return Seed(Dots, props)
-  const uImage =  ImageTexture({ src: props.src || ashi })
+  const uImage = ImageTexture({ src: props.src || ashi })
+  cell.read(RecordStroke({ node: 'manila' }))
   
   return cell.read(Points({
     node: 'manila',

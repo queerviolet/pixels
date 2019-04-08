@@ -358,6 +358,7 @@ export class Cell {
     this.isDead = true
     Object.values(this.effects)
       .forEach(effect => effect.dispose())
+    this.inputs.forEach(i => i.removeOutput(this))
     this.effects = {}
   }
 }
