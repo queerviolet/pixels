@@ -212,7 +212,7 @@ vec2_f32[Accessor] = vec2_f32
 export const vec2 = vec2_f32
 
 
-export const vec4_f32: vec2_f32 = {
+export const vec4_f32: vec4_f32 = {
   type: 'vec4',
   ArrayType: new Float32Array(0),
   byteLength: 4 * 32 / 8,
@@ -265,11 +265,11 @@ export const vec4_f32: vec2_f32 = {
       node: this.node,
     }
   }
-} as any as vec2_f32
+} as any as vec4_f32
 vec4_f32[dtype] = vec4_f32
 vec4_f32[Accessor] = vec4_f32
 
-export const vec4 = vec2_f32
+export const vec4 = vec4_f32
 
 export interface Structure {
   [field: string]: Shape

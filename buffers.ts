@@ -3,12 +3,12 @@ type WithData = {
   data: string
 }
 
-const DTYPES: { [key: string]: dtype }= { float, vec2 }
+const DTYPES: { [key: string]: dtype }= { float, vec2, vec4 }
 
 import { vertexArrayBuffer, textureBuffer, queueBuffer } from './buffer-peer'
 import { Stream } from './stream'
 import { Seed, Cell } from './loop'
-import { dtype, float, vec2 } from 'parcel-plugin-writable/src/struct'
+import { dtype, float, vec2, vec4 } from 'parcel-plugin-writable/src/struct'
 import { GLContext, DataContext } from './contexts'
 
 import { dirname, basename, extname } from 'path'

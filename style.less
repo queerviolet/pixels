@@ -27,3 +27,19 @@ canvas {
   box-sizing: border-box;
   text-shadow: 2px 2px 8px fadeout(black, 0.8);
 }
+
+.picker {
+  display: flex;
+  position: fixed;
+  top: var(--letterbox-bars-0-top);
+  left: var(--letterbox-bars-0-left);
+  bottom: var(--letterbox-bars-0-bottom);
+  right: var(--letterbox-bars-0-right);
+  width: var(--letterbox-bars-0-width);
+  height: var(--letterbox-bars-0-height);
+  background: red;
+
+  > div {
+    flex-grow: 1;
+  }
+}

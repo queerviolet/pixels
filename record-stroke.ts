@@ -4,9 +4,11 @@ import Data, { write } from './parcel-plugin-writable/src/node'
 import { frameCoordsFrom } from './stage'
 import { GLContext } from './contexts'
 
+export type Sampler = (x: number, y: number) => [number, number, number, number]
+
 type Props = {
   node?: string
-  colorSource?: CanvasRenderingContext2D
+  color?: Sampler
 }
 
 export default function RecordStroke(props: Props, cell?: Cell) {
@@ -18,13 +20,13 @@ export default function RecordStroke(props: Props, cell?: Cell) {
   const { canvas } = gl
   if (!canvas) return
 
-  const src = cell.read<CanvasRenderingContext2D>(props.colorSource)
+  const srcColor = cell.read<Sampler>(props.color)
 
-  return cell.effect('listen-and-write', () => {    
+  return cell.effect('listen-and-write', () => {
     const pos = Data(node, ['pos'], vec2)
     const force = Data(node, ['force'], float)
     const color = Data(node, ['color'], vec4)
-    // color.set([1, 1, 1, 1])
+    color.set([1, 1, 1, 1])
 
     canvas.addEventListener('mousedown', onMouse)
     canvas.addEventListener('mousemove', onMouse)
@@ -42,8 +44,9 @@ export default function RecordStroke(props: Props, cell?: Cell) {
         force.set([touch.force])
         write(pos)
         write(force)
-        if (src) {
-          color.set(src.getImageData(touch.clientX, touch.clientY, 1, 1).data)
+
+        if (srcColor) {
+          color.set(srcColor(touch.clientX, touch.clientY))
         }
         write(color)
       }
@@ -58,6 +61,11 @@ export default function RecordStroke(props: Props, cell?: Cell) {
       force.set([0.5])
       write(pos)
       write(force)
+
+      if (srcColor) {
+        color.set(srcColor(ev.clientX, ev.clientY))
+      }
+      write(color)      
     }
 
     return () => {
@@ -66,7 +74,7 @@ export default function RecordStroke(props: Props, cell?: Cell) {
       canvas.removeEventListener('touchmove', onTouch)
       canvas.removeEventListener('touchend', onTouch)
     }
-  }, [node, canvas, src])
+  }, [node, canvas, srcColor])
 }
 
 
