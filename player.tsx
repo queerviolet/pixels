@@ -157,11 +157,12 @@ export default function Player({ play }: Props) {
         if (typeof opacity !== 'number') return
 
         const currentFb = cell.read(DrawTexture({ draw: current && current.draw }))
-        const prevFb = cell.read(DrawTexture({ draw: prev && prev.draw }))
+
+        const prevFb = opacity < 1.0 && cell.read(DrawTexture({ draw: prev && prev.draw }))
         
         cell.read(Layers([
-          { output: currentFb, opacity },
-          { output: prevFb, opacity: 1.0 - opacity },
+          { output: currentFb, opacity: 1.0 },
+          opacity < 1.0 && { output: prevFb, opacity: 1.0 - opacity },
         ]))
       }
     }</Eval>

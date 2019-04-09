@@ -12,12 +12,12 @@ type Props = {
   src: string
   language?: Language
   frame?: StageRect
+  title?: string
 }
 
-export default ({ src, frame, language='typescript' as Language }: Props) => {
-  const title = basename(src)
+export default ({ src, title, frame, language='typescript' as Language }: Props) => {
   const code = useSource(src)
-  return <Panel title={title} frame={frame}>
+  return <Panel title={title || basename(src)} frame={frame}>
     <Code language={language}>{code}</Code>
   </Panel>
 }

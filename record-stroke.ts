@@ -40,6 +40,7 @@ export default function RecordStroke(props: Props, cell?: Cell) {
       t.preventDefault()
       let i = touches.length; while (i --> 0) {
         const touch = touches.item(i)
+        if (touch.touchType !== 'stylus') continue
         pos.set(frameCoordsFrom(touch))
         force.set([touch.force])
         write(pos)

@@ -7,6 +7,6 @@ varying vec4 vColor;
 
 void transform() {
   gl_Position = uProjection * vec4(pos, 0.0, 1.0);
-  gl_PointSize = 5.0 * force * 7.0;
+  gl_PointSize = 5.0 * force * 10.0;
   vColor = color;
 }

@@ -62,26 +62,17 @@ export default {
       <Code src='points.basic.frag' frame={GRID_2x2[0][1]} />
     </>
   },
-  'Me made of dots with code': {
-    draw: Dots(),
-    overlay: <>
-      <Code src='./scenes/dots.tsx' frame={GRID_3x3[0][0]} />
-    </>
-  },
-  'Even more code': {
-    draw: Dots(),
-    overlay: <>
-      <Code src='./scenes/dots.tsx' frame={GRID_3x3[0][0]} />
-      <Code src='./scenes/dots.tsx' frame={GRID_3x3[0][1]} />
-      <Code src='./scenes/bleed.tsx' frame={GRID_3x3[0][2]} />
-    </>
-  },
+  'litebrite mode': {
+    draw: Dots({ node: 'litebrite' }),
+    overlay: COLOR_PICKER,  
+  }
 }
  
-function Dots(props: { src?: string, output?: any }={}, cell?: Cell) {
+function Dots(props: { node?: string, output?: any }={}, cell?: Cell) {
   if (!cell) return Seed(Dots, props)
+  const {node='title'} = props
   cell.read(RecordStroke({
-    node: 'title',
+    node,
     color
   }))
   
@@ -92,7 +83,7 @@ function Dots(props: { src?: string, output?: any }={}, cell?: Cell) {
       output: DrawTexture({
         draw:
           Points({
-            node: 'title',
+            node,
             uApplyForce: BuildIn({ beat: 'dots/force' }),
             uApplyColor: BuildIn({ beat: 'dots/position' }),
             uApplyPosition: BuildIn({ beat: 'dots/color', ms: 3000 }),
@@ -104,10 +95,11 @@ function Dots(props: { src?: string, output?: any }={}, cell?: Cell) {
       output: DrawTexture({
         draw:
           Points({
-            node: 'title',
+            node,
             output: props.output,      
             uApplyPosition: 1.0,
             uApplyForce: 1.0,
+            uApplyColor: 1.0,
           })
       }),
       opacity: 1.0
