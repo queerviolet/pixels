@@ -82,9 +82,9 @@ const lumaLoop = new Luma.AnimationLoop({
     }
   },
 
-  onRender({ tick, $, }) {
-    $(Clock).write(tick)
-    $.run(tick)
+  onRender({ time, $, }) {
+    $(Clock).write(time)
+    $.run(time)
   },
 })
 

@@ -61,7 +61,9 @@ export default function Player({ play }: Props) {
     }, {
       ts: grow(Clock).value || 0,
       prev: null,
-      current: playerState.value !== Loading ? play.beats[playerState.value as string] : play.first,//initialBeat ? play.beats[initialBeat] : play.first,
+      current: playerState.value !== Loading
+        ? play.beats[playerState.value as string] || play.first
+        : play.first,//initialBeat ? play.beats[initialBeat] : play.first,
     })
   
   const [showInspector, toggleInspector] = useReducer(
@@ -109,7 +111,7 @@ export default function Player({ play }: Props) {
     return playerState(handleStateChange)
     
     function handleStateChange(id) {
-      id && go({ type: 'seek', beat: play.beats[id] })
+      id && go({ type: 'seek', beat: play.beats[id] || play.first })
     }
   }, [go])
 

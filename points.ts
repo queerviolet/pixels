@@ -11,6 +11,7 @@ export interface Props {
   uImage?: any
   output?: any
   uGridToPos?: number
+  uOpacity?: number
 }
 
 export default function Points(props: Props, cell?: Cell) {
@@ -33,9 +34,9 @@ export default function Points(props: Props, cell?: Cell) {
       varying vec4 vColor;
       
       vec2 pos_from_index() {
-        float i = index / 32.0;
+        float i = index / 128.0;
         float f = floor(i);
-        return vec2(f, 18.0 * (i - f)) - vec2(15.0, 8.0);
+        return vec2(f / 2.0, 15.0 * (i - f)) - vec2(15.0, 8.0);
       }
 
       void main() {
@@ -50,12 +51,15 @@ export default function Points(props: Props, cell?: Cell) {
     `,
     fs: `
       precision highp float;
+
+      uniform float uOpacity;
+
       varying float vForce;
       varying vec2 vPos;
       varying vec4 vColor;
 
       void main() {
-        gl_FragColor = vColor;
+        gl_FragColor = vec4(vColor.rgb, uOpacity);
       }
     `
   }))
@@ -80,7 +84,10 @@ export default function Points(props: Props, cell?: Cell) {
   const uProjection = cell.read(Camera.uProjection)
   if (!uProjection) return
 
-  const { uGridToPos=0 } = props
+  const uGridToPos = cell.read(props.uGridToPos || 0)
+  const uOpacity = cell.read(props.uOpacity || 1)
+  if (typeof uGridToPos !== 'number' || typeof uOpacity !== 'number')
+    return
 
   const params: any = {
     vertexArray: shader.vertexArray,
@@ -89,6 +96,7 @@ export default function Points(props: Props, cell?: Cell) {
     uniforms: {
       uProjection,
       uGridToPos,
+      uOpacity,
     }
   }
 
@@ -96,6 +104,7 @@ export default function Points(props: Props, cell?: Cell) {
   if (props.output) {
     output = cell.read(props.output)
     params.framebuffer = output
+    props.output.clear({color: [0, 0, 0, 0]})
   }
   shader.program.draw(params)
 

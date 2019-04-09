@@ -354,7 +354,7 @@ const asKey = (key: any) =>
 const tagMap = new WeakMap<any, string>()
 export const tag = (key: any): string => {
   if (typeof key === 'string') return JSON.stringify(key)
-  if (typeof key === 'number') return String(key)
+  if (typeof key === 'number' || typeof key === 'boolean') return String(key)
   if (key instanceof Pattern) return key.key
   if (key === null) return 'null'
   if (key === undefined) return 'undefined'
