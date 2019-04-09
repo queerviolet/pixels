@@ -3,13 +3,14 @@ import { POINTS } from 'luma.gl/constants'
 import { Camera } from './contexts'
 import { Cell, Seed } from './loop'
 import Shader from './shader'
-import { VertexArrayBuffer } from './buffers'
+import { VertexArrayBuffer, IndexBuffer } from './buffers'
 
 export interface Props {
   node: string
   drawMode?: number
   uImage?: any
   output?: any
+  uGridToPos?: number
 }
 
 export default function Points(props: Props, cell?: Cell) {
@@ -20,17 +21,28 @@ export default function Points(props: Props, cell?: Cell) {
     vs: `
       uniform mat4 uProjection;
 
+      uniform float uGridToPos;
+
       attribute vec2 pos;
       attribute float force;
       attribute vec4 color;
+      attribute float index;
 
       varying float vForce;
       varying vec2 vPos;
       varying vec4 vColor;
+      
+      vec2 pos_from_index() {
+        float i = index / 32.0;
+        float f = floor(i);
+        return vec2(f, 18.0 * (i - f)) - vec2(15.0, 8.0);
+      }
 
       void main() {
-        gl_Position = uProjection * vec4(pos.x, pos.y, 0.0, 1.0);
+        // gl_Position = uProjection * vec4(pos.x, pos.y, 0.0, 1.0);
+        gl_Position = uProjection * vec4(mix(pos_from_index(), pos, uGridToPos), 0.0, 1.0);
         gl_PointSize = 5.0 * force * 7.0;
+        // gl_PointSize = 5.0;
         vForce = force;
         vPos = pos;
         vColor = color;
@@ -39,13 +51,10 @@ export default function Points(props: Props, cell?: Cell) {
     fs: `
       precision highp float;
       varying float vForce;
-      // uniform sampler2D uImage;
       varying vec2 vPos;
       varying vec4 vColor;
 
       void main() {
-        vec2 texCoord = vec2((vPos.x + 16.) / 32., (vPos.y + 9.) / 18.);
-        // gl_FragColor = vec4(texture2D(uImage, texCoord).rgb, 1.0);
         gl_FragColor = vColor;
       }
     `
@@ -55,22 +64,23 @@ export default function Points(props: Props, cell?: Cell) {
   const force = cell.read(VertexArrayBuffer({ data: `${node}/force.float` }))
   const color = cell.read(VertexArrayBuffer({ data: `${node}/color.vec4` }))
 
-  if (!shader || !pos || !force) return
+  if (!shader || !pos || !force || !color) return
 
   const vertexCount = pos.count
-  if (!vertexCount) return
+  const index = cell.read(IndexBuffer({ for: VertexArrayBuffer({ data: `${node}/pos.vec2` }) }))
+  if (!index || !vertexCount) return
 
   shader.vertexArray.setAttributes({
     pos: pos.buffer,
     force: force.buffer,
     color: color.buffer,
+    index: index.buffer,
   })
 
   const uProjection = cell.read(Camera.uProjection)
   if (!uProjection) return
 
-  // const uImage = cell.read(props.uImage)
-  // if (!uImage) return
+  const { uGridToPos=0 } = props
 
   const params: any = {
     vertexArray: shader.vertexArray,
@@ -78,7 +88,7 @@ export default function Points(props: Props, cell?: Cell) {
     drawMode,
     uniforms: {
       uProjection,
-      // uImage,
+      uGridToPos,
     }
   }
 

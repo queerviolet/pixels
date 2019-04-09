@@ -14,13 +14,11 @@ import { GRID_3x3 } from '../stage'
 import RecordStroke, { Sampler } from '../record-stroke'
 import Picker, { asSampler } from '../picker'
 
-let sampleColor: Sampler = () => [1, 1, 1, 1]
+let currentSampler: Sampler = () => [1, 1, 1, 1]
+const color: Sampler = (x, y) => currentSampler(x, y)
 
 const COLOR_PICKER = <Picker
-  onPick={c => {
-    console.log(c)
-    sampleColor = asSampler(c)
-  }}
+  onPick={c => currentSampler = asSampler(c)}
   colors={[
     [1, 0, 1, 1],
     [0, 1, 1, 1],
@@ -53,13 +51,13 @@ export default {
     draw: Dots({ src: skyline })
   }
 }
-
+ 
 function Dots(props: { src?: string, output?: any }={}, cell?: Cell) {
   if (!cell) return Seed(Dots, props)
   const uImage = ImageTexture({ src: props.src || ashi })
   cell.read(RecordStroke({
     node: 'title',
-    color: (x, y) => sampleColor(x, y)
+    color
   }))
   
   return cell.read(Points({

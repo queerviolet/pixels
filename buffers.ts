@@ -47,6 +47,23 @@ export function VertexArrayBuffer(props: WithData, cell?: Cell) {
   }, [props.data])
 }
 
+
+export function IndexBuffer(props: { for: Stream }, cell?: Cell) {
+  if (!cell) return Seed(IndexBuffer, props)
+  const gl = cell.read(GLContext)
+  if (!gl) return
+  const stream: Stream = gl._indexStream = gl._indexStream || new Stream(gl, {
+    type: gl.FLOAT,
+    size: 1,
+  })
+  const base = cell.read(props.for)
+  const length = base.count - stream.count
+  if (length > 0) {    
+    stream.push(Float32Array.from({ length }, (_, i) => i + stream.count))
+  }
+  return stream
+}
+
 export function QueueBuffer(props: WithData, cell?: Cell) {
   if (!cell) return Seed(QueueBuffer, props)
   const client = cell.read(DataContext)
