@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { useState } from 'react'
 
 import RecordStroke, { Sampler } from '../record-stroke'
 
@@ -17,31 +18,46 @@ import Picker, { asSampler } from '../picker'
 import isTablet from '../view-mode'
 
 let currentSampler: Sampler = asSampler(skyline)
+let currentSrc = skyline
 const color: Sampler = (x, y) => currentSampler(x, y)
 
-const IMAGE_PICKER = isTablet ? <Picker
-  onPick={c => currentSampler = asSampler(c)}
-  colors={[
-    skyline,
-    [1, 1, 1, 1],
-    [0, 0, 0, 1],
-    () => [Math.random(), Math.random(), Math.random(), 1.0],
-  ]} /> : null
+const ImagePicker = () => {
+  if (!isTablet) return null
+  const [src, setSrc] = useState(currentSrc)
+  return <>
+    <Picker
+      onPick={c => {
+        currentSampler = asSampler(c)
+        currentSrc = c
+        setSrc(c)
+      }}
+      colors={[
+        skyline,
+        [1, 1, 1, 1],
+        [0, 0, 0, 1],
+        () => [Math.random(), Math.random(), Math.random(), 1.0],
+      ]} /> : null
+    <img src={src} className='hint' />
+  </>
+}
+
 
 export default {
   'Draw on the skyline': {
-    overlay: IMAGE_PICKER,
-    draw: Paint()
+    draw: Paint(),
+    overlay: <ImagePicker />
   },
   'Bleed them together': {
-    draw: Paint()
+    draw: Bleed(),
+    overlay: <ImagePicker />
   },
-  'Look at the shader': {
-    draw: Paint(),
+  'Bleed fragment shader': {
+    draw: Bleed(),
     overlay: <>
-      <Code src='./scenes/bleed.tsx' frame={hbox(STAGE)[0]} />
+      <ImagePicker />
+      <Code src='scenes/bleed.frag' frame={hbox(STAGE, 2)[0]} />
     </>
-  }
+  },
 }
 
 function Paint(props?, cell?: Cell) {
@@ -51,7 +67,6 @@ function Paint(props?, cell?: Cell) {
     node: 'manila',
     framebuffer: props.output,
     batchSize: 100,
-    uImage: ImageTexture({ src: skyline })
   } as any))
 }
 
@@ -68,8 +83,7 @@ function Bleed(props?, cell?: Cell) {
   cell.read(PaintStroke({
     node: 'manila',
     framebuffer: bleed.input,
-    batchSize: 100,
-    uImage: ImageTexture({ src: skyline })
+    batchSize: 20,
   } as any))
 
   cell.read(Layers([
@@ -92,38 +106,6 @@ const BLEED = Rumination({
         gl_Position = vec4(aPosition, 1.0);
       }
     `,
-    fs: `
-      precision highp float;
-      uniform sampler2D uInput;
-      varying vec3 vPosition;
-      uniform float uStep;
-
-      vec4 bleed() {
-        vec4 self = texture2D(uInput, vec2(vPosition));
-        vec4 bleedColor = self;
-        for (float dx = -1.0; dx <= 1.1; ++dx) {
-          for (float dy = -1.0; dy <= 1.1; ++dy) {
-            vec4 val = texture2D(uInput,
-              vec2(vPosition) + vec2(
-                uStep * dx,
-                uStep * dy
-              )
-            );
-            float distance = val.a + length(vec2(dx, dy)) / 500.0;
-            float delta = distance - self.a;
-            if (delta < 0.0) {
-              bleedColor = vec4(val.rgb, distance);
-            }
-          }
-        }
-        return bleedColor;
-      }
-
-      void main() {
-        vec4 self = texture2D(uInput, vec2(vPosition));
-        vec4 bleedColor = bleed();
-        gl_FragColor = vec4(((bleedColor + self) / 2.0).rgb, bleedColor.a);
-      }
-    `,
+    fs: require('./bleed.frag'),
   })
 })

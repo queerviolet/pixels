@@ -37,9 +37,22 @@ canvas {
   right: var(--letterbox-bars-0-right);
   width: var(--letterbox-bars-0-width);
   height: var(--letterbox-bars-0-height);
-  background: red;
 
   > div {
     flex-grow: 1;
   }
+}
+
+img.hint {  
+  display: block;
+  z-index: 100;
+  pointer-events: none;
+  position: fixed;
+  top: var(--letterbox-top);
+  left: var(--letterbox-left);
+  bottom: var(--letterbox-bottom);
+  right: var(--letterbox-right);
+  width: var(--letterbox-width);
+  height: var(--letterbox-height);
+  opacity: 0.2;
 }

@@ -6,7 +6,6 @@ import { QueueBuffer } from './buffers'
 type PaintStrokeProps = {
   node: string
   batchSize?: number
-  uImage: any
   framebuffer: any
 }
 
@@ -45,20 +44,18 @@ export default function PaintStroke(props: PaintStrokeProps, cell?: Cell) {
         uniform vec4 uColor;
         precision highp float;
         varying vec4 vPosition;
-        uniform sampler2D uImage;
 
         void main() {
           vec2 texPos = vec2((uPos.x + 16.) / 32., (uPos.y + 9.) / 18.);
-          gl_FragColor = uColor; //vec4(texture2D(uImage, texPos).xyz, 0.0);
+          gl_FragColor = vec4(uColor.rgb, 0.0);
         }`,
     }))
     return cone => cone.delete()
   }, [ gl ])
 
-  const uImage = cell.read(props.uImage)
   const uProjection = cell.read(Camera.uProjection)
 
-  if (uImage && cone && pos && force && pos.length && force.length && color.length) {
+  if (cone && pos && force && pos.length && force.length && color.length) {
     let batch = Math.min(batchSize, pos.length, force.length, color.length)
     while (batch --> 0) {
       const uPos = pos.shift()
@@ -69,7 +66,6 @@ export default function PaintStroke(props: PaintStrokeProps, cell?: Cell) {
           uProjection,
           uPos,
           uForce,
-          uImage,
           uColor,
         },
         framebuffer: props.framebuffer,
