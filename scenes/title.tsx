@@ -25,6 +25,8 @@ const color: Sampler = (x, y) => currentSampler(x, y)
 const COLOR_PICKER = isTablet ? <Picker
   onPick={c => currentSampler = asSampler(c)}
   colors={[
+    [1, 1, 1, 1],
+    [0, 0, 0, 1],
     [1, 0, 1, 1],
     [0, 1, 1, 1],
     () => [Math.random(), Math.random(), Math.random(), 1.0],
@@ -32,30 +34,30 @@ const COLOR_PICKER = isTablet ? <Picker
 
 export default {
   [`I'm going to paint you something`]: {
-    draw: Dots(),
+    draw: Title({ drawingHint: true }),
     overlay: COLOR_PICKER
   },
   force: {
-    draw: Dots(),
+    draw: Title({ drawingHint: true }),
     overlay: COLOR_PICKER,
   },
   position: {
-    draw: Dots(),
+    draw: Title({ drawingHint: true }),
     overlay: COLOR_PICKER,
   },
   color: {
-    draw: Dots(),
+    draw: Title({ drawingHint: true }),
     overlay: COLOR_PICKER,
   },
   [`vertex shader`]: {
-    draw: Dots(),
+    draw: Title({ drawingHint: true }),
     overlay: <>
       {COLOR_PICKER}
       <Code src='points.basic.vert' frame={GRID_2x2[0][0]} />
     </>
   },
   [`fragment shader`]: {
-    draw: Dots(),
+    draw: Title({ drawingHint: true }),
     overlay: <>
       {COLOR_PICKER}
       <Code src='points.basic.vert' frame={GRID_2x2[0][0]} />
@@ -63,13 +65,24 @@ export default {
     </>
   },
   'litebrite mode': {
-    draw: Dots({ node: 'litebrite' }),
+    draw: Title({ node: 'litebrite' }),
     overlay: COLOR_PICKER,  
+  },
+  opacity: {
+    draw: Title({ node: 'litebrite' }),
+    overlay: COLOR_PICKER,
+  },
+  'opacity with code': {
+    draw: Title({ node: 'litebrite' }),
+    overlay: <>
+      {COLOR_PICKER}
+      <Code src='points.withOpacity.vert' frame={GRID_2x2[0][0]} />
+    </>
   }
 }
  
-function Dots(props: { node?: string, output?: any }={}, cell?: Cell) {
-  if (!cell) return Seed(Dots, props)
+function Title(props: { node?: string, drawingHint?: boolean, output?: any }={}, cell?: Cell) {
+  if (!cell) return Seed(Title, props)
   const {node='title'} = props
   cell.read(RecordStroke({
     node,
@@ -84,14 +97,15 @@ function Dots(props: { node?: string, output?: any }={}, cell?: Cell) {
         draw:
           Points({
             node,
-            uApplyForce: BuildIn({ beat: 'dots/force' }),
-            uApplyColor: BuildIn({ beat: 'dots/position' }),
-            uApplyPosition: BuildIn({ beat: 'dots/color', ms: 3000 }),
+            uApplyForce: BuildIn({ beat: 'title/force' }),
+            uApplyColor: BuildIn({ beat: 'title/position' }),
+            uApplyPosition: BuildIn({ beat: 'title/color', ms: 3000 }),
+            uApplyOpacity: BuildIn({ beat: 'title/opacity' }),
           })
       }),
       opacity: isTablet ? 0.5 : 1.0,
     },
-    isTablet && {
+    isTablet && props.drawingHint && {
       output: DrawTexture({
         draw:
           Points({

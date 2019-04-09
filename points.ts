@@ -1,11 +1,12 @@
 import { POINTS } from 'luma.gl/constants'
+import { withParameters } from 'luma.gl'
 
-import { Camera } from './contexts'
+import { Camera, GLContext } from './contexts'
 import { Cell, Seed, ReadObject } from './loop'
 import Shader from './shader'
 import { VertexArrayBuffer, IndexBuffer } from './buffers'
 
-const basicVs = require('./points.basic.vert')
+const basicVs = require('./points.withOpacity.vert')
 const basicFs = require('./points.basic.frag')
 
 export interface Props {
@@ -16,6 +17,7 @@ export interface Props {
   uApplyPosition?: number
   uApplyForce?: number
   uApplyColor?: number
+  uApplyOpacity?: number
 }
 
 export default function Points(props: Props, cell?: Cell) {
@@ -27,6 +29,7 @@ export default function Points(props: Props, cell?: Cell) {
       uniform float uApplyPosition;
       uniform float uApplyForce;
       uniform float uApplyColor;
+      uniform float uApplyOpacity;
 
       attribute float index;
       
@@ -44,7 +47,8 @@ export default function Points(props: Props, cell?: Cell) {
         transform();
         gl_Position = mix(pos_from_index(), gl_Position, uApplyPosition);
         gl_PointSize = mix(5.0, gl_PointSize, uApplyForce);
-        vColor = mix(vec4(pos.x, force, pos.y, 1.0), color, uApplyColor);
+        vColor = mix(vec4(pos.x, force, pos.y, 1.0), vColor, uApplyColor);
+        vColor = mix(vec4(vColor.rgb, 1.0), vColor, uApplyOpacity);
       }
     `,
     fs: basicFs
@@ -74,7 +78,8 @@ export default function Points(props: Props, cell?: Cell) {
     uProjection: Camera.uProjection,
     uApplyPosition: props.uApplyPosition || 0,
     uApplyForce: props.uApplyForce || 0,
-    uApplyColor: props.uApplyColor || 0,   
+    uApplyColor: props.uApplyColor || 0,
+    uApplyOpacity: props.uApplyOpacity || 0,
   }))
   if (!uniforms) return 
 
@@ -88,10 +93,18 @@ export default function Points(props: Props, cell?: Cell) {
   let output = null
   if (props.output) {
     output = cell.read(props.output)
-    params.framebuffer = output
+    // params.framebuffer = output
     props.output.clear({color: [0, 0, 0, 0]})
   }
-  shader.program.draw(params)
+
+  const gl = cell.read(GLContext)
+  if (!gl) return
+
+  withParameters(gl, {
+    [gl.BLEND]: true,
+    blendFunc: [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
+    framebuffer: output
+  }, () => shader.program.draw(params))
 
   return output && output.color
 }

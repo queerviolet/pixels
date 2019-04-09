@@ -1,11 +1,11 @@
 import { ReactElement } from 'react'
 
-import dots from './dots'
+import title from './title'
 import bleed from './bleed'
 import { Pattern } from 'loop';
 
 const presentation = createPresentation({
-  dots,
+  title,
   bleed
 })
 
