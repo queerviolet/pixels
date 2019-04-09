@@ -1,0 +1,7 @@
+{
+  "name": "Painting with Pixels (Tablet)",
+  "short_name": "Pixels (Tablet)",
+  "display": "fullscreen",
+  "start_url": "/?tablet",
+  "orientation": "landscape"
+}

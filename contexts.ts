@@ -10,3 +10,5 @@ export const Stage = {
   aPosition: 'Stage.aPosition',
   uCount: 'Stage.uCount',
 }
+
+export const Presentation = 'Presentation.state'

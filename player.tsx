@@ -11,7 +11,7 @@ import Layers from './layers'
 import Inspector from './inspector'
 
 import * as Luma from 'luma.gl'
-import { Clock } from './contexts';
+import { Clock, Presentation as STATE } from './contexts';
 
 import { state as synced, State as StateNode, Loading } from 'parcel-plugin-writable/src/node'
 
@@ -19,8 +19,6 @@ export interface Props {
   play: Presentation
   initialBeat?: string
 }
-
-const STATE = 'Presentation.state'
 
 type State = {
   ts: DOMHighResTimeStamp

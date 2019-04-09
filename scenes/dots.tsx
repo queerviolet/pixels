@@ -13,6 +13,7 @@ import Code from '../code'
 import { GRID_3x3 } from '../stage'
 import RecordStroke, { Sampler } from '../record-stroke'
 import Picker, { asSampler } from '../picker'
+import { isTablet } from '../view-mode'
 
 let currentSampler: Sampler = () => [1, 1, 1, 1]
 const color: Sampler = (x, y) => currentSampler(x, y)
@@ -28,7 +29,7 @@ const COLOR_PICKER = <Picker
 export default {
   [`I'm going to paint you something`]: {
     draw: Dots(),
-    overlay: COLOR_PICKER
+    overlay: isTablet ? COLOR_PICKER : null
   },
   'Me made of dots': {
     draw: Dots(),
