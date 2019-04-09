@@ -19,7 +19,8 @@ export default function PaintStroke(props: PaintStrokeProps, cell?: Cell) {
 
   const pos = cell.read(QueueBuffer({ data: node + '/pos.vec2' }))
   const force = cell.read(QueueBuffer({ data: node + '/force.float' }))
-  if (!pos || !force) return
+  const color = cell.read(QueueBuffer({ data: node + '/color.vec4' }))
+  if (!pos || !force || !color) return
 
   const cone = cell.effect<Cone>('cones', _ => {                  
     _(new Cone(gl, {
@@ -27,9 +28,10 @@ export default function PaintStroke(props: PaintStrokeProps, cell?: Cell) {
       height: 0.1,
       cap: false,
       vs: `
+        attribute vec3 positions;
+
         uniform vec2 uPos;
         uniform float uForce;
-        attribute vec3 positions;
         uniform mat4 uProjection;
         varying vec4 vPosition;
 
@@ -40,13 +42,14 @@ export default function PaintStroke(props: PaintStrokeProps, cell?: Cell) {
         }`,
       fs: `
         uniform vec2 uPos;
+        uniform vec4 uColor;
         precision highp float;
         varying vec4 vPosition;
         uniform sampler2D uImage;
 
         void main() {
           vec2 texPos = vec2((uPos.x + 16.) / 32., (uPos.y + 9.) / 18.);
-          gl_FragColor = vec4(texture2D(uImage, texPos).xyz, 0.0);
+          gl_FragColor = uColor; //vec4(texture2D(uImage, texPos).xyz, 0.0);
         }`,
     }))
     return cone => cone.delete()
@@ -55,21 +58,23 @@ export default function PaintStroke(props: PaintStrokeProps, cell?: Cell) {
   const uImage = cell.read(props.uImage)
   const uProjection = cell.read(Camera.uProjection)
 
-  if (uImage && cone && pos && force && pos.length && force.length) {
-    let batch = Math.min(batchSize, pos.length, force.length)
+  if (uImage && cone && pos && force && pos.length && force.length && color.length) {
+    let batch = Math.min(batchSize, pos.length, force.length, color.length)
     while (batch --> 0) {
       const uPos = pos.shift()
       const uForce = force.shift()
+      const uColor = color.shift()
       cone.draw({
         uniforms: {
           uProjection,
           uPos,
           uForce,
           uImage,
+          uColor,
         },
         framebuffer: props.framebuffer,
       })
     }
-    if (pos.length || force.length) cell.read(Clock)
+    if (pos.length || force.length || color.length) cell.read(Clock)
   }
 }

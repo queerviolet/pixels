@@ -4,7 +4,7 @@ import Data, { write } from './parcel-plugin-writable/src/node'
 import { frameCoordsFrom } from './stage'
 import { GLContext } from './contexts'
 
-export type Sampler = (x: number, y: number) => [number, number, number, number]
+export type Sampler = (x: number, y: number) => number[]
 
 type Props = {
   node?: string
@@ -41,13 +41,14 @@ export default function RecordStroke(props: Props, cell?: Cell) {
       let i = touches.length; while (i --> 0) {
         const touch = touches.item(i)
         if (touch.touchType !== 'stylus') continue
-        pos.set(frameCoordsFrom(touch))
+        const coords = frameCoordsFrom(touch)
+        pos.set(coords)
         force.set([touch.force])
         write(pos)
         write(force)
 
         if (srcColor) {
-          color.set(srcColor(touch.clientX, touch.clientY))
+          color.set(srcColor(coords[0], coords[1]))
         }
         write(color)
       }
@@ -58,13 +59,14 @@ export default function RecordStroke(props: Props, cell?: Cell) {
       if (ev.type === 'mousedown') isDrawing = true
       if (!isDrawing) return
       if (ev.type === 'mouseup') isDrawing = false
-      pos.set(frameCoordsFrom(ev) as any)
+      const coords = frameCoordsFrom(ev)
+      pos.set(coords)
       force.set([0.5])
       write(pos)
       write(force)
 
       if (srcColor) {
-        color.set(srcColor(ev.clientX, ev.clientY))
+        color.set(srcColor(coords[0], coords[1]))
       }
       write(color)      
     }

@@ -1,6 +1,6 @@
 import * as React from 'react'
 
-import RecordStroke from '../record-stroke'
+import RecordStroke, { Sampler } from '../record-stroke'
 
 import ImageTexture from '../image-texture'
 import PaintStroke from '../paint-stroke'
@@ -13,24 +13,53 @@ import skyline from '../manila-skyline.jpg'
 import { Cell, Seed } from '../loop'
 import { GRID_3x3, hbox, STAGE } from '../stage'
 import Code from '../code'
+import Picker, { asSampler } from '../picker'
+import isTablet from '../view-mode'
+
+let currentSampler: Sampler = asSampler(skyline)
+const color: Sampler = (x, y) => currentSampler(x, y)
+
+const IMAGE_PICKER = isTablet ? <Picker
+  onPick={c => currentSampler = asSampler(c)}
+  colors={[
+    skyline,
+    [1, 1, 1, 1],
+    [0, 0, 0, 1],
+    () => [Math.random(), Math.random(), Math.random(), 1.0],
+  ]} /> : null
 
 export default {
+  'Draw on the skyline': {
+    overlay: IMAGE_PICKER,
+    draw: Paint()
+  },
   'Bleed them together': {
-    draw: Bleed()
+    draw: Paint()
   },
   'Look at the shader': {
-    draw: Bleed(),
+    draw: Paint(),
     overlay: <>
       <Code src='./scenes/bleed.tsx' frame={hbox(STAGE)[0]} />
     </>
   }
 }
 
+function Paint(props?, cell?: Cell) {
+  if (!cell) return Seed(Paint, {})
+  cell.read(RecordStroke({ node: 'manila', color }))
+  cell.read(PaintStroke({
+    node: 'manila',
+    framebuffer: props.output,
+    batchSize: 100,
+    uImage: ImageTexture({ src: skyline })
+  } as any))
+}
+
 function Bleed(props?, cell?: Cell) { 
   if (!cell) return Seed(Bleed, props)
   const { output } = props
 
-  cell.read(RecordStroke({ node: 'manila' }))
+  cell.read(RecordStroke({ node: 'manila', color }))
 
   const bleed = cell.read(BLEED)
 
