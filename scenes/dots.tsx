@@ -15,7 +15,6 @@ import RecordStroke, { Sampler } from '../record-stroke'
 import Picker, { asSampler } from '../picker'
 import { isTablet } from '../view-mode'
 
-import { Presentation, Clock } from '../contexts'
 import { BuildIn } from '../anim'
 import Layers from '../layers'
 import DrawTexture from '../draw-texture'
@@ -36,12 +35,15 @@ export default {
     draw: Dots(),
     overlay: COLOR_PICKER
   },
-  [`Render force`]: {
+  [`force`]: {
     draw: Dots({ applyForce: true }),
     overlay: COLOR_PICKER,
   },
-  [`Position them on a cartesian plane`]: {
+  [`position`]: {
     draw: Dots({ applyForce: true, applyPosition: true }),
+  },
+  [`color`]: {
+    draw: Dots({ applyForce: true, applyPosition: true, applyColor: true }),
   },
   'Me made of dots with code': {
     draw: Dots(),
@@ -62,23 +64,14 @@ export default {
   }
 }
  
-function Dots(props: { src?: string, output?: any, applyForce?: boolean, applyPosition?: boolean }={}, cell?: Cell) {
+function Dots(props: { src?: string, output?: any, applyForce?: boolean, applyColor?: boolean, applyPosition?: boolean }={}, cell?: Cell) {
   if (!cell) return Seed(Dots, props)
   cell.read(RecordStroke({
     node: 'title',
     color
   }))
   
-  // const uApplyPosition = applyPosition
   if (!props.output) return
-
-  // if (isTablet) {
-  //   cell.read(Points({
-  //     node: 'title',
-  //     output: props.output,      
-  //     uApplyPosition: 1.0,
-  //   }))
-  // }
 
   return cell.read(Layers([
     {
@@ -86,8 +79,9 @@ function Dots(props: { src?: string, output?: any, applyForce?: boolean, applyPo
         draw:
           Points({
             node: 'title',
-            uApplyForce: props.applyForce ? BuildIn({ name: 'force' }) : 0.0,
-            uApplyPosition: props.applyPosition ? BuildIn({ name: 'pos' }) : 0.0,
+            uApplyForce: BuildIn({ beat: 'dots/force' }),
+            uApplyColor: BuildIn({ beat: 'dots/position' }),
+            uApplyPosition: BuildIn({ beat: 'dots/color', ms: 3000 }),
           })
       }),
       opacity: isTablet ? 0.5 : 1.0,

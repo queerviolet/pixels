@@ -11,9 +11,10 @@ import Layers from './layers'
 import Inspector from './inspector'
 
 import * as Luma from 'luma.gl'
-import { Clock, Presentation as STATE } from './contexts';
+import { Clock, Presentation as PresentationContext } from './contexts';
 
 import { state as synced, State as StateNode, Loading } from 'parcel-plugin-writable/src/node'
+import { BuildIn } from './anim'
 
 export interface Props {
   play: Presentation
@@ -72,9 +73,13 @@ export default function Player({ play }: Props) {
 
   const didGesture = useRef<boolean>()
 
+  useEffect(
+    () => grow(PresentationContext.data).write(play), []
+  )
+
   useEffect(() => {
     console.log('State is now:', state.current && state.current.id)
-    grow(STATE).write(state)
+    grow(PresentationContext.playState).write(state)
     if (didGesture.current) {
       playerState.set(state.current && state.current.id)
       didGesture.current = false
@@ -129,9 +134,10 @@ export default function Player({ play }: Props) {
         //   })
         // }, [a, b])
 
-        const state = cell.read<State>(STATE)
+        const state = cell.read<State>(PresentationContext.playState)
         if (!state) return
-        const { current, prev } = state
+        const { ts, current, prev } = state
+
         // if (current !== last.beat) {
         //   console.log('changing from', last.beat, 'to', current)
         //   last.beat = current
@@ -147,9 +153,15 @@ export default function Player({ play }: Props) {
         // const now = cell.read(Clock)
         // const t = Math.min(1.0, (now - start) / (end - start))
 
+        const opacity = cell.read(BuildIn({ beat: current.id, ms: 300 }))
+        if (typeof opacity !== 'number') return
+
+        const currentFb = cell.read(DrawTexture({ draw: current && current.draw }))
+        const prevFb = cell.read(DrawTexture({ draw: prev && prev.draw }))
+        
         cell.read(Layers([
-          { output: DrawTexture({ draw: current && current.draw }), opacity: 1 },
-          // { output: DrawTexture({ draw: prev && prev.draw }), opacity: 1.0 - t },
+          { output: currentFb, opacity },
+          { output: prevFb, opacity: 1.0 - opacity },
         ]))
       }
     }</Eval>

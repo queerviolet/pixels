@@ -11,4 +11,7 @@ export const Stage = {
   uCount: 'Stage.uCount',
 }
 
-export const Presentation = 'Presentation.state'
+export const Presentation = {
+  playState: 'Presentation.state',
+  data: 'Presentation.data',
+}

@@ -37,12 +37,18 @@ export function ReadObject<T extends object=object>(object: T, cell?: Cell): T {
   if (!cell) return Seed(ReadObject, object)
   const out: T = {} as T
 
+  let ready = true
   const keys = Object.keys(object)
   let i = keys.length; while (i --> 0) {
     const k = keys[i]
     out[k] = cell.read(object[k])
+    const c = cell.context(object[k])
+    if (!c.isConstant && c.lastEvaluatedAt === -1) {
+      ready = false
+    }
   }
 
+  if (!ready) return null
   return out
 }
 
@@ -99,7 +105,7 @@ export function createLoop(): CellContext {
   const get: any = (pattern: any, evaluator?: Evaluator) => {    
     const key = tag(pattern)
     if (!cells.has(key)) {
-      let cell
+      let cell: Cell
       if (isKey(pattern)) {
         cell = new Cell(get, pattern, evaluator)
         cells.set(key, cell)
@@ -107,7 +113,8 @@ export function createLoop(): CellContext {
       } else {
         cell = new Cell(get, pattern, NilEvaluator)
         cell.value = pattern
-        cells.set(key, cell)        
+        cell.isConstant = true
+        cells.set(key, cell)      
       }
       return cell
     }
@@ -258,6 +265,7 @@ export class Cell {
   public lastEvaluatedAt = -1
   public evaluationCount = 0
   public wasForgottenAt = Infinity
+  public isConstant: boolean = false
 
   public addOutput(cell: Cell) {
     this.outputs[cell.key] = cell

@@ -45,9 +45,9 @@ export default function Points(props: Props, cell?: Cell) {
       void main() {
         gl_Position = uProjection * vec4(mix(pos_from_index(), pos, uApplyPosition), 0.0, 1.0);
         gl_PointSize = mix(5.0, 5.0 * force * 7.0, uApplyForce);
+        vColor = mix(vec4(pos.x, force, pos.y, 1.0), color, uApplyColor);
         vForce = force;
         vPos = pos;
-        vColor = color;
       }
     `,
     fs: `
@@ -83,29 +83,19 @@ export default function Points(props: Props, cell?: Cell) {
   const uProjection = cell.read(Camera.uProjection)
   if (!uProjection) return
 
-  const uApplyPosition = cell.read(props.uApplyPosition || 0)
-  const uApplyForce = cell.read(props.uApplyForce || 0)
-  const uApplyColor = cell.read(props.uApplyColor || 0)
-
-  // const uniforms = cell.read(ReadObject({
-  //   uProjection: Camera.uProjection,
-  //   uApplyPosition: props.uApplyPosition || [0],
-  //   uApplyForce: props.uApplyForce || [0],
-  //   uApplyColor: props.uApplyColor || [0],    
-  // }))
-  // if (!uniforms) return
-
+  const uniforms = cell.read(ReadObject({
+    uProjection: Camera.uProjection,
+    uApplyPosition: props.uApplyPosition || 0,
+    uApplyForce: props.uApplyForce || 0,
+    uApplyColor: props.uApplyColor || 0,   
+  }))
+  if (!uniforms) return 
 
   const params: any = {
     vertexArray: shader.vertexArray,
     vertexCount,
     drawMode,
-    uniforms: {
-      uProjection,
-      uApplyForce: uApplyForce || 0,
-      uApplyColor: uApplyColor || 0,
-      uApplyPosition: uApplyPosition || 0,
-    }
+    uniforms,    
   }
 
   let output = null
