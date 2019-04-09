@@ -1,7 +1,7 @@
 import { POINTS } from 'luma.gl/constants'
 
 import { Camera } from './contexts'
-import { Cell, Seed } from './loop'
+import { Cell, Seed, ReadObject } from './loop'
 import Shader from './shader'
 import { VertexArrayBuffer, IndexBuffer } from './buffers'
 
@@ -10,8 +10,9 @@ export interface Props {
   drawMode?: number
   uImage?: any
   output?: any
-  uGridToPos?: number
-  uOpacity?: number
+  uApplyPosition?: number
+  uApplyForce?: number
+  uApplyColor?: number
 }
 
 export default function Points(props: Props, cell?: Cell) {
@@ -22,7 +23,9 @@ export default function Points(props: Props, cell?: Cell) {
     vs: `
       uniform mat4 uProjection;
 
-      uniform float uGridToPos;
+      uniform float uApplyPosition;
+      uniform float uApplyForce;
+      uniform float uApplyColor;
 
       attribute vec2 pos;
       attribute float force;
@@ -40,10 +43,8 @@ export default function Points(props: Props, cell?: Cell) {
       }
 
       void main() {
-        // gl_Position = uProjection * vec4(pos.x, pos.y, 0.0, 1.0);
-        gl_Position = uProjection * vec4(mix(pos_from_index(), pos, uGridToPos), 0.0, 1.0);
-        gl_PointSize = 5.0 * force * 7.0;
-        // gl_PointSize = 5.0;
+        gl_Position = uProjection * vec4(mix(pos_from_index(), pos, uApplyPosition), 0.0, 1.0);
+        gl_PointSize = mix(5.0, 5.0 * force * 7.0, uApplyForce);
         vForce = force;
         vPos = pos;
         vColor = color;
@@ -52,14 +53,12 @@ export default function Points(props: Props, cell?: Cell) {
     fs: `
       precision highp float;
 
-      uniform float uOpacity;
-
       varying float vForce;
       varying vec2 vPos;
       varying vec4 vColor;
 
       void main() {
-        gl_FragColor = vec4(vColor.rgb, uOpacity);
+        gl_FragColor = vColor;
       }
     `
   }))
@@ -84,10 +83,18 @@ export default function Points(props: Props, cell?: Cell) {
   const uProjection = cell.read(Camera.uProjection)
   if (!uProjection) return
 
-  const uGridToPos = cell.read(props.uGridToPos || 0)
-  const uOpacity = cell.read(props.uOpacity || 1)
-  if (typeof uGridToPos !== 'number' || typeof uOpacity !== 'number')
-    return
+  const uApplyPosition = cell.read(props.uApplyPosition || 0)
+  const uApplyForce = cell.read(props.uApplyForce || 0)
+  const uApplyColor = cell.read(props.uApplyColor || 0)
+
+  // const uniforms = cell.read(ReadObject({
+  //   uProjection: Camera.uProjection,
+  //   uApplyPosition: props.uApplyPosition || [0],
+  //   uApplyForce: props.uApplyForce || [0],
+  //   uApplyColor: props.uApplyColor || [0],    
+  // }))
+  // if (!uniforms) return
+
 
   const params: any = {
     vertexArray: shader.vertexArray,
@@ -95,8 +102,9 @@ export default function Points(props: Props, cell?: Cell) {
     drawMode,
     uniforms: {
       uProjection,
-      uGridToPos,
-      uOpacity,
+      uApplyForce: uApplyForce || 0,
+      uApplyColor: uApplyColor || 0,
+      uApplyPosition: uApplyPosition || 0,
     }
   }
 

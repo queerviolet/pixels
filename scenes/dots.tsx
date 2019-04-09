@@ -36,8 +36,12 @@ export default {
     draw: Dots(),
     overlay: COLOR_PICKER
   },
+  [`Render force`]: {
+    draw: Dots({ applyForce: true }),
+    overlay: COLOR_PICKER,
+  },
   [`Position them on a cartesian plane`]: {
-    draw: Dots({ positioned: true }),
+    draw: Dots({ applyForce: true, applyPosition: true }),
   },
   'Me made of dots with code': {
     draw: Dots(),
@@ -58,25 +62,23 @@ export default {
   }
 }
  
-function Dots(props: { src?: string, output?: any, positioned?: boolean }={}, cell?: Cell) {
+function Dots(props: { src?: string, output?: any, applyForce?: boolean, applyPosition?: boolean }={}, cell?: Cell) {
   if (!cell) return Seed(Dots, props)
   cell.read(RecordStroke({
     node: 'title',
     color
   }))
   
-  // const uGridToPos = positioned
+  // const uApplyPosition = applyPosition
   if (!props.output) return
-  // props.output.clear({color: [0, 0, 0, 0]})
 
-  if (isTablet) {
-    cell.read(Points({
-      node: 'title',
-      output: props.output,      
-      uGridToPos: 1.0,
-      uOpacity: 1.0,         
-    }))
-  }
+  // if (isTablet) {
+  //   cell.read(Points({
+  //     node: 'title',
+  //     output: props.output,      
+  //     uApplyPosition: 1.0,
+  //   }))
+  // }
 
   return cell.read(Layers([
     {
@@ -84,9 +86,8 @@ function Dots(props: { src?: string, output?: any, positioned?: boolean }={}, ce
         draw:
           Points({
             node: 'title',
-            // output: props.output,
-            // opacity: 1.0,
-            uGridToPos: props.positioned ? BuildIn() : 0.0,
+            uApplyForce: props.applyForce ? BuildIn({ name: 'force' }) : 0.0,
+            uApplyPosition: props.applyPosition ? BuildIn({ name: 'pos' }) : 0.0,
           })
       }),
       opacity: isTablet ? 0.5 : 1.0,
@@ -97,7 +98,8 @@ function Dots(props: { src?: string, output?: any, positioned?: boolean }={}, ce
           Points({
             node: 'title',
             output: props.output,      
-            uGridToPos: 1.0,
+            uApplyPosition: 1.0,
+            uApplyForce: 1.0,
           })
       }),
       opacity: 1.0
