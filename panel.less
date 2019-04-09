@@ -37,7 +37,7 @@
   code {
     margin: 6px;
     display: block;
-    white-space: pre;
+    white-space: pre-wrap;
   }
 
   animation: slide-in 600ms forwards;
@@ -70,4 +70,8 @@
     transform: translateX(0%);
     height: var(--panel-height);
   }
+}
+
+.token-line {
+  min-height: 1em;
 }

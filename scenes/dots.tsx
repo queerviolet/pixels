@@ -10,7 +10,7 @@ import skyline from '../manila-skyline.jpg'
 // @ts-ignore
 import ashi from '../ashi-headshot-02.jpg'
 import Code from '../code'
-import { GRID_3x3 } from '../stage'
+import { GRID_3x3, GRID_2x2, hbox, STAGE } from '../stage'
 import RecordStroke, { Sampler } from '../record-stroke'
 import Picker, { asSampler } from '../picker'
 import { isTablet } from '../view-mode'
@@ -35,15 +35,32 @@ export default {
     draw: Dots(),
     overlay: COLOR_PICKER
   },
-  [`force`]: {
-    draw: Dots({ applyForce: true }),
+  force: {
+    draw: Dots(),
     overlay: COLOR_PICKER,
   },
-  [`position`]: {
-    draw: Dots({ applyForce: true, applyPosition: true }),
+  position: {
+    draw: Dots(),
+    overlay: COLOR_PICKER,
   },
-  [`color`]: {
-    draw: Dots({ applyForce: true, applyPosition: true, applyColor: true }),
+  color: {
+    draw: Dots(),
+    overlay: COLOR_PICKER,
+  },
+  [`vertex shader`]: {
+    draw: Dots(),
+    overlay: <>
+      {COLOR_PICKER}
+      <Code src='points.basic.vert' frame={GRID_2x2[0][0]} />
+    </>
+  },
+  [`fragment shader`]: {
+    draw: Dots(),
+    overlay: <>
+      {COLOR_PICKER}
+      <Code src='points.basic.vert' frame={GRID_2x2[0][0]} />
+      <Code src='points.basic.frag' frame={GRID_2x2[0][1]} />
+    </>
   },
   'Me made of dots with code': {
     draw: Dots(),
@@ -59,12 +76,9 @@ export default {
       <Code src='./scenes/bleed.tsx' frame={GRID_3x3[0][2]} />
     </>
   },
-  'Skyline': {
-    draw: Dots({ src: skyline })
-  }
 }
  
-function Dots(props: { src?: string, output?: any, applyForce?: boolean, applyColor?: boolean, applyPosition?: boolean }={}, cell?: Cell) {
+function Dots(props: { src?: string, output?: any }={}, cell?: Cell) {
   if (!cell) return Seed(Dots, props)
   cell.read(RecordStroke({
     node: 'title',

@@ -1,6 +1,5 @@
-import { Seed, Cell } from './loop'
+import { Seed } from './loop'
 import { Presentation, Clock } from './contexts'
-import { Beat } from 'scenes';
 
 interface AnimProps {
   from?: number, to?: number, ms?: number, beat?: string

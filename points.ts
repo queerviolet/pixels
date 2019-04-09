@@ -5,6 +5,9 @@ import { Cell, Seed, ReadObject } from './loop'
 import Shader from './shader'
 import { VertexArrayBuffer, IndexBuffer } from './buffers'
 
+const basicVs = require('./points.basic.vert')
+const basicFs = require('./points.basic.frag')
+
 export interface Props {
   node: string
   drawMode?: number
@@ -21,46 +24,30 @@ export default function Points(props: Props, cell?: Cell) {
 
   const shader = cell.read(Shader({
     vs: `
-      uniform mat4 uProjection;
-
       uniform float uApplyPosition;
       uniform float uApplyForce;
       uniform float uApplyColor;
 
-      attribute vec2 pos;
-      attribute float force;
-      attribute vec4 color;
       attribute float index;
-
-      varying float vForce;
-      varying vec2 vPos;
-      varying vec4 vColor;
       
-      vec2 pos_from_index() {
+      ${basicVs}
+
+      vec4 pos_from_index() {
         float i = index / 128.0;
         float f = floor(i);
-        return vec2(f / 2.0, 15.0 * (i - f)) - vec2(15.0, 8.0);
+        return uProjection * vec4(vec2(f / 2.0, 15.0 * (i - f)) - vec2(15.0, 8.0), 0.0, 1.0);
       }
 
       void main() {
-        gl_Position = uProjection * vec4(mix(pos_from_index(), pos, uApplyPosition), 0.0, 1.0);
-        gl_PointSize = mix(5.0, 5.0 * force * 7.0, uApplyForce);
+        // gl_Position = uProjection * vec4(mix(pos_from_index(), pos, uApplyPosition), 0.0, 1.0);
+        // gl_PointSize = mix(5.0, 5.0 * force * 7.0, uApplyForce);
+        transform();
+        gl_Position = mix(pos_from_index(), gl_Position, uApplyPosition);
+        gl_PointSize = mix(5.0, gl_PointSize, uApplyForce);
         vColor = mix(vec4(pos.x, force, pos.y, 1.0), color, uApplyColor);
-        vForce = force;
-        vPos = pos;
       }
     `,
-    fs: `
-      precision highp float;
-
-      varying float vForce;
-      varying vec2 vPos;
-      varying vec4 vColor;
-
-      void main() {
-        gl_FragColor = vColor;
-      }
-    `
+    fs: basicFs
   }))
 
   const pos = cell.read(VertexArrayBuffer({ data: `${node}/pos.vec2` }))

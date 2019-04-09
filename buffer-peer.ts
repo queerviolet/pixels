@@ -3,12 +3,8 @@ import createEvent, { Event, Emitter } from './parcel-plugin-writable/src/event'
 import { PeerMessage, PeerMethods, Data } from 'parcel-plugin-writable/src/peer'
 import { Descriptor, dtype } from 'parcel-plugin-writable/src/struct'
 import { Message, Location } from './parcel-plugin-writable/src/message'
-import { Node } from './parcel-plugin-writable/src/node'
 import { Stream } from './stream'
-import { append, clear } from 'parcel-plugin-writable/client';
 import { join } from 'path'
-import { getPath, getLocation } from 'parcel-plugin-writable/src/node';
-
 
 type DataBuffers<B> = PeerMethods & {
   onChange: Event<B>

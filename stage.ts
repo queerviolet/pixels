@@ -82,3 +82,5 @@ export const hbox = (container: StageRect, count=3, margin=0.3): StageRect[] => 
 }
 
 export const GRID_3x3 = hbox(STAGE).map(r => vbox(r))
+export const GRID_3x2 = hbox(STAGE).map(r => vbox(r, 2))
+export const GRID_2x2 = hbox(STAGE, 2).map(r => vbox(r, 2))
