@@ -201,12 +201,13 @@ export default {
       Unlike a component, this whole setup is designed to make it *super easy*
       to reference other cells by their patterns.
 
-      So we use this $ function to connect another cell. That creates a
-      reference to the other cell and returns that cell's current value. 
-            
-      a RecordStroke cell, which will
-      attach event listeners to the canvas and send stroke data to the server and
-      so on.
+      So we use this $ function—pronounced "connect"—to connect another cell.
+      It takes a Pattern and returns that Pattern's current value. Under the hood,
+      it creates an edge between that cell and this one, so when that value changes,
+      this evaluator will get called again.
+
+      We connect up a few other cells. First a RecordStroke cell, which
+      attaches event listeners to the canvas and sends the data to the server.
 
       And then we mount a Rumination, which is an Evaluator that handles the
       infinite recurisve buffer-swapping shader business, just looping back
@@ -228,9 +229,17 @@ export default {
       for more than a few ticks, we kill it, and free any resources associated
       with it.
 
-      What's really nice about this setup is that in a steady state, it's
-      quite low overhead. Everything carries a key, so our diff is really
-      straightforward.
+      But unlike React components, Cells can wire themselves into a web of
+      dependencies. React is explicitly opposed to this. You *can* get refs to
+      other components, but basically the advice is that you *shouldn't*. React
+      really  wants your data to flow one way: out of your components and into
+      the page. Having data flowing every whichaway leads to chaos.
+
+      But we want chaos. That's why these recursive shader effects are so cool:
+      they are literally chaotic. They just keep looping back onto themsevles
+      and changing.
+
+      This one is pretty stable. Others, won't be.
     `,
     draw: Bleed({ node: 'batanes', color }),
     overlay: [
