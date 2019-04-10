@@ -15,6 +15,7 @@ import { Clock, Presentation as PresentationContext } from './contexts';
 
 import { state as synced, State as StateNode, Loading } from 'parcel-plugin-writable/src/node'
 import { BuildIn } from './anim'
+import { isTablet } from './view-mode'
 
 const ReactCSSTransitionGroup = require('react-addons-css-transition-group')
 
@@ -177,6 +178,15 @@ export default function Player({ play }: Props) {
       state.current.overlay ? state.current.overlay : null
     }</ReactCSSTransitionGroup>
     { showInspector ? <Inspector /> : null }
+    {
+      isTablet ?
+        <div className='fixed-bar-1'>
+          <div className='note'>{
+            state.current.note || null
+          }</div>
+        </div>
+      : null    
+    }
   </>
 }
 

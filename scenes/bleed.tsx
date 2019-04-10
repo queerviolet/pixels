@@ -3,11 +3,7 @@ import { useState } from 'react'
 
 import RecordStroke, { Sampler } from '../record-stroke'
 
-import ImageTexture from '../image-texture'
 import PaintStroke from '../paint-stroke'
-import Layers from '../layers'
-import Rumination from '../rumination'
-import Shader from '../shader'
 
 // @ts-ignore
 import skyline from '../manila-skyline.jpg'
@@ -16,8 +12,8 @@ const hills = require('../batanes-hills.jpg')
 const lighthouse = require('../batanes-lighthouse.jpg')
 const pier = require('../batanes-pier.jpg')
 
-import { $, $Child, Cell, Seed } from '../loop'
-import { GRID_3x3, hbox, STAGE } from '../stage'
+import { Cell, Seed } from '../loop'
+import { hbox, STAGE } from '../stage'
 import Code from '../code'
 import Picker, { asSampler } from '../picker'
 import isTablet from '../view-mode'
@@ -59,12 +55,12 @@ export default {
     overlay: <ImagePicker />
   },
   'Bleed fragment shader': {
+    note: `This is Batanes [talk abt Batanes]...`,
     draw: Bleed({ node: 'manila', color }),
     overlay: [
       <ImagePicker />,
       <Code key='scenes/bleed.frag' src='scenes/bleed.frag' frame={hbox(STAGE, 2)[0]} />,
     ],
-    note: `This is Batanes...`
   },
   'Batanes': {
     note: `

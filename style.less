@@ -28,8 +28,7 @@ canvas {
   text-shadow: 2px 2px 8px fadeout(black, 0.8);
 }
 
-.picker {
-  display: flex;
+.fixed-bar-0 {
   position: fixed;
   top: var(--letterbox-bars-0-top);
   left: var(--letterbox-bars-0-left);
@@ -37,16 +36,19 @@ canvas {
   right: var(--letterbox-bars-0-right);
   width: var(--letterbox-bars-0-width);
   height: var(--letterbox-bars-0-height);
-
-  > div {
-    flex-grow: 1;
-  }
 }
 
-img.hint {  
-  display: block;
-  z-index: 100;
-  pointer-events: none;
+.fixed-bar-1 {
+  position: fixed;
+  top: var(--letterbox-bars-1-top);
+  left: var(--letterbox-bars-1-left);
+  bottom: var(--letterbox-bars-1-bottom);
+  right: var(--letterbox-bars-1-right);
+  width: var(--letterbox-bars-1-width);
+  height: var(--letterbox-bars-1-height);
+}
+
+.fixed-letterbox {
   position: fixed;
   top: var(--letterbox-top);
   left: var(--letterbox-left);
@@ -54,5 +56,30 @@ img.hint {
   right: var(--letterbox-right);
   width: var(--letterbox-width);
   height: var(--letterbox-height);
+}
+
+.picker {
+  display: flex;
+  .fixed-bar-0();
+
+  > div {
+    flex-grow: 1;
+  }
+}
+
+img.hint {
+  .fixed-letterbox();
+  display: block;
+  z-index: 100;
+  pointer-events: none;
   opacity: 0.2;
+}
+
+.note {
+  height: 100%;
+  position: relative;
+  left: 5vw;
+  width: calc(100% - 10vw);
+  font-size: 12px;
+  overflow: auto;
 }
