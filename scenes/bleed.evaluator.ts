@@ -19,7 +19,7 @@ export default function Bleed(props?, cell?: Cell) {
   )  
   if (!bleed) return
 
-  const paint = $(
+  const paint = $Child(
     PaintStroke({
       node,
       batchSize: 80,

@@ -58,7 +58,7 @@ export default {
   },
   'Bleed fragment shader': {
     note: `This is Batanes [talk abt Batanes]...`,
-    draw: Bleed({ node: 'manila', color }),
+    draw: Bleed({ node: 'manila', color, fs }),
     overlay: [
       <ImagePicker />,
       <Code key='scenes/bleed.frag' src='scenes/bleed.frag' frame={hbox(STAGE, 2)[0]} />,

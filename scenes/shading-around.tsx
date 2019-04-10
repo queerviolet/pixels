@@ -19,8 +19,10 @@ import Picker, { asSampler } from '../picker'
 import isTablet from '../view-mode'
 
 import Bleed from './bleed.evaluator'
-import Inspector from '../inspector'
 
+const blur = require('./blur.frag')
+const afterimage = require('./afterimage.frag')
+const illuminate = require('./illuminate.frag')
 const life = require('./life.frag')
 
 let currentSampler: Sampler = asSampler(skyline)
@@ -47,9 +49,31 @@ const ImagePicker = ({ imgs=[skyline] }) => {
   </>
 }
 
+const withCode = (shader: { [name: string]: string }, node='batanes') => {
+  const [[name, fs]] = Object.entries(shader)
+  const src = `scenes/${name}.frag`
+  return {
+    [name]: {
+      draw: Bleed({ node, color, fs }),
+      overlay: <ImagePicker key='IMAGE_PICKER' imgs={[
+        hills, lighthouse, pier
+      ]} />,
+    },
+    [`${name} code`]: {
+      draw: Bleed({ node, color, fs }),
+      overlay: [
+        <ImagePicker key='IMAGE_PICKER' imgs={[
+          hills, lighthouse, pier
+        ]} />,
+        <Code key={src} src={src} frame={hbox(STAGE)[0]} />,
+      ]
+    },
+  }
+}
+
 export default {
-  'Game of life': {
-    draw: Bleed({ node: 'manila', color, fs: life }),
-    overlay: <ImagePicker />
-  },
+  ...withCode({blur}),
+  ...withCode({afterimage}),  
+  ...withCode({illuminate}),
+  ...withCode({life}, 'game-of-life'),
 }
