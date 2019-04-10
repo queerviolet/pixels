@@ -23,6 +23,7 @@ let currentSampler: Sampler = () => [1, 1, 1, 1]
 const color: Sampler = (x, y) => currentSampler(x, y)
 
 const COLOR_PICKER = isTablet ? <Picker
+  key='COLOR_PICKER'
   onPick={c => currentSampler = asSampler(c)}
   colors={[
     [1, 1, 1, 1],
@@ -51,18 +52,18 @@ export default {
   },
   [`vertex shader`]: {
     draw: Title({ drawingHint: true }),
-    overlay: <>
-      {COLOR_PICKER}
-      <Code src='points.basic.vert' frame={GRID_2x2[0][0]} />
-    </>
+    overlay: [
+      COLOR_PICKER,
+      <Code key='points.basic.vert' src='points.basic.vert' frame={GRID_2x2[0][0]} />,
+    ]
   },
   [`fragment shader`]: {
     draw: Title({ drawingHint: true }),
-    overlay: <>
-      {COLOR_PICKER}
-      <Code src='points.basic.vert' frame={GRID_2x2[0][0]} />
-      <Code src='points.basic.frag' frame={GRID_2x2[0][1]} />
-    </>
+    overlay: [
+      COLOR_PICKER,
+      <Code key='points.basic.vert' src='points.basic.vert' frame={GRID_2x2[0][0]} />,
+      <Code key='points.basic.frag' src='points.basic.frag' frame={GRID_2x2[0][1]} />,
+    ]
   },
   'litebrite mode': {
     draw: Title({ node: 'litebrite' }),
@@ -74,10 +75,10 @@ export default {
   },
   'opacity with code': {
     draw: Title({ node: 'litebrite' }),
-    overlay: <>
-      {COLOR_PICKER}
-      <Code src='points.withOpacity.vert' frame={GRID_2x2[0][0]} />
-    </>
+    overlay: [
+      COLOR_PICKER,
+      <Code key='points.withOpacity.vert' src='points.withOpacity.vert' frame={GRID_2x2[0][0]} />,
+    ]
   }
 }
  

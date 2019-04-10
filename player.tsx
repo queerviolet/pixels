@@ -16,6 +16,8 @@ import { Clock, Presentation as PresentationContext } from './contexts';
 import { state as synced, State as StateNode, Loading } from 'parcel-plugin-writable/src/node'
 import { BuildIn } from './anim'
 
+const ReactCSSTransitionGroup = require('react-addons-css-transition-group')
+
 export interface Props {
   play: Presentation
   initialBeat?: string
@@ -163,10 +165,16 @@ export default function Player({ play }: Props) {
         cell.read(Layers([
           { output: currentFb, opacity: 1.0 },
           opacity < 1.0 && { output: prevFb, opacity: 1.0 - opacity },
-        ]))
+        ]))      
       }
     }</Eval>
-    { state.current.overlay ? state.current.overlay : null }
+    <ReactCSSTransitionGroup
+      transitionName='beat'
+      transitionEnterTimeout={700}
+      transitionLeaveTimeout={700}
+    >{
+      state.current.overlay ? state.current.overlay : null
+    }</ReactCSSTransitionGroup>
     { showInspector ? <Inspector /> : null }
   </>
 }

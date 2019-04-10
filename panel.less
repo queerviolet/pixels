@@ -31,7 +31,9 @@
     line-height: @title-bar-height;    
     font-size: calc(0.26 * var(--su));
     font-family: 'Menlo', 'Source Code Pro';
-    animation: glow 1000ms forwards;
+
+    background: fadeout(@blue, 50%);
+    color: white;
   }
 
   code {
@@ -40,7 +42,19 @@
     white-space: pre-wrap;
   }
 
-  animation: slide-in 600ms forwards;
+  &.beat-enter {
+    animation: slide-in 600ms forwards;
+    h1 {
+      animation: glow 1000ms forwards;
+    }
+  }
+
+  &.beat-leave {
+    animation: slide-in 600ms reverse forwards;
+    h1 {
+      animation: glow 1000ms forwards;
+    }
+  }
 }
 
 @keyframes glow {

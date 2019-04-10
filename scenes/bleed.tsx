@@ -52,10 +52,10 @@ export default {
   },
   'Bleed fragment shader': {
     draw: Bleed(),
-    overlay: <>
-      <ImagePicker />
-      <Code src='scenes/bleed.frag' frame={hbox(STAGE, 2)[0]} />
-    </>
+    overlay: [
+      <ImagePicker />,
+      <Code src='scenes/bleed.frag' frame={hbox(STAGE, 2)[0]} />,
+    ]
   },
   'Another one': {
     draw: Paint({ node: 'batanes' }),

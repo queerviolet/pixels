@@ -10,7 +10,7 @@ type Props = {
 }
 
 export function Panel({ title, frame=[[-5, -5], [5, 5]], children }: Props) {
-  return <div className={`panel`} style={styleFromFrame(frame)}>
+  return <div key={title} className={`panel`} style={styleFromFrame(frame)}>
     <h1>{title}</h1>    
     <div className='content'>{children}</div>
   </div>
