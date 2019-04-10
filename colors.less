@@ -1,7 +1,7 @@
 @blue: rgb(115, 213, 255);
 
-.rounded() { 
-  border-radius: calc(0.2 * var(--su));
+.rounded(@radius: calc(0.2 * var(--su))) { 
+  border-radius: @radius;
 }
 
 .monospace(@font-size: 14px) {

@@ -1,12 +1,7 @@
 import * as React from 'react'
 import { useState } from 'react'
 
-import RecordStroke, { Sampler } from '../record-stroke'
-
-import PaintStroke from '../paint-stroke'
-
-// @ts-ignore
-import skyline from '../manila-skyline.jpg'
+import { Sampler } from '../record-stroke'
 
 const hills = require('../batanes-hills.jpg')
 const lighthouse = require('../batanes-lighthouse.jpg')
@@ -25,11 +20,11 @@ const afterimage = require('./afterimage.frag')
 const illuminate = require('./illuminate.frag')
 const life = require('./life.frag')
 
-let currentSampler: Sampler = asSampler(skyline)
-let currentSrc = skyline
+let currentSampler: Sampler = asSampler(lighthouse)
+let currentSrc = lighthouse
 const color: Sampler = (x, y) => currentSampler(x, y)
 
-const ImagePicker = ({ imgs=[skyline] }) => {
+const ImagePicker = ({ imgs=[hills, lighthouse, pier] }) => {
   if (!isTablet) return null
   const [src, setSrc] = useState(currentSrc)
   return <>
@@ -55,23 +50,18 @@ const withCode = (shader: { [name: string]: string }, node='batanes', props={}) 
   return {
     [name]: {
       draw: Bleed({ node, color, fs, ...props }),
-      overlay: <ImagePicker key='IMAGE_PICKER' imgs={[
-        hills, lighthouse, pier
-      ]} />,
+      overlay: <ImagePicker key='IMAGE_PICKER' />,
     },
     [`${name} code`]: {
       draw: Bleed({ node, color, fs, ...props }),
       overlay: [
-        <ImagePicker key='IMAGE_PICKER' imgs={[
-          hills, lighthouse, pier
-        ]} />,
+        <ImagePicker key='IMAGE_PICKER' />,
         <Code key={src} src={src} frame={hbox(STAGE)[0]} />,
       ]
     },
   }
 }
 
-import { frame } from '../stage'
 export default {
   ...withCode({blur}),
   ...withCode({afterimage}),  

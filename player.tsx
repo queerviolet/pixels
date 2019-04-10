@@ -178,8 +178,8 @@ export default function Player({ play }: Props) {
       isTablet ?
         <>
           <div className='fixed-bar-1'>
-            <button className='player-prev' onClick={prev} onTouchStart={prev}>Prev</button>
-            <button className='player-next' onClick={next} onTouchStart={next}>Next</button>
+            <button className='player-prev' onClick={prev}>Prev</button>
+            <button className='player-next' onClick={next}>Next</button>
           </div>
           <div
             className={`notes ${notesExpanded ? 'expanded' : ''}`}

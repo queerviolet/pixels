@@ -2,7 +2,12 @@
 @import './inspector.less';
 @import './panel.less';
 
-body { background: #111; color: white; }
+body {
+  background: #111;
+  color: white;
+  .monospace();
+  touch-action: manipulation;
+}
 
 canvas {
   position: fixed;
@@ -93,9 +98,12 @@ img.hint {
   }
 
   > .note {
-    &.current > h1 { color: @blue; }
+    &.current > h1 {
+      color: @blue;
+    }
 
     > h1 {
+      display: table;
       font-size: 14px;
     }
   }
@@ -106,7 +114,6 @@ img.hint {
 }
 
 .player-next, .player-prev {
-  .rounded();
   position: absolute;
   display: block;
   height: 100%;
@@ -123,8 +130,15 @@ img.hint {
   }
 
   outline: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.player-prev {
+  border-radius: 0 0 0 16px;
 }
 
 .player-next {
   right: 0;
+  border-radius: 0 0 16px;
 }
