@@ -1,11 +1,6 @@
 import hot from './hot'
 import './stage'
 import { GLContext, DataContext, Clock, Camera, Stage } from './contexts'
-import { QueueBuffer, VertexArrayBuffer } from './buffers'
-import { Seed, Cell, withProps } from './loop'
-
-import Data, { write } from 'parcel-plugin-writable/src/node'
-import { vec2, float } from 'parcel-plugin-writable/src/struct'
 import prez from './scenes'
 window['SLIDES'] = prez
 
@@ -18,25 +13,12 @@ import { render } from 'react-dom'
 import * as React from 'react'
 import Loop, { Eval, createLoop, isContext } from './loop'
 
-//@ts-ignore
-import headshot from './ashi-headshot-02.jpg'
-//@ts-ignore
-import skyline from './manila-skyline.jpg'
-
 const QUAD_VERTS = new Float32Array([
   1, 1, 0,   -1, 1, 0,
   1, -1, 0, -1, -1, 0])
 
-import Points from './points'
-import RecordStroke from './record-stroke'
-import ImageTexture from './image-texture'
-import Shader from './shader'
-import PaintStroke from './paint-stroke'
-import Rumination from './rumination'
-import Layers from './layers'
 
 import defaultClient from './parcel-plugin-writable/src/client'
-import { Framebuffer } from './framebuffer'
 import Player from './player'
 
 const lumaLoop = new Luma.AnimationLoop({
@@ -70,9 +52,9 @@ const lumaLoop = new Luma.AnimationLoop({
     $(Stage.uCount).write(QUAD_VERTS.length / 3)
 
     render(
-        <Loop loop={$}>
-          <Player play={prez} />
-        </Loop>,
+      <Loop loop={$}>
+        <Player play={prez} />
+      </Loop>,
       document.getElementById('main'))
 
     canvas.style = ''

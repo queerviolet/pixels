@@ -1,8 +1,7 @@
 import * as React from 'react'
 import { Fragment, useContext, useState, useEffect, useMemo, useReducer, Reducer } from 'react';
 
-import { Context as CellContext, Cell, tag, NilEvaluator } from './loop'
-import { string } from 'prop-types';
+import { Context as CellContext, Cell, tag, NilEvaluator, Pattern } from './loop'
 
 interface Props {
   collectStatsMs?: number
@@ -16,6 +15,7 @@ type CellStats = {
   evaluationCount: number[]
   evaluationDelta: number[]
   outputs: string[],
+  pattern: Pattern,
 }
 
 const updateStats: (win: number) => Reducer<LifeStats, Map<string, Cell>> =
@@ -28,6 +28,7 @@ const updateStats: (win: number) => Reducer<LifeStats, Map<string, Cell>> =
       s.evaluationDelta = s.evaluationDelta || new Array(statsWindow).fill(0)
       s.evaluationCount = s.evaluationCount || new Array(statsWindow).fill(0)
       s.outputs = s.outputs || []
+      s.pattern = cell.pattern
 
       s.evaluationCount.unshift(cell.evaluationCount)
       const [ current, prev = 0 ] = s.evaluationCount
@@ -57,17 +58,35 @@ export default function CellInspector({ collectStatsMs = 200, statsWindow=10 }: 
   return <div className='cell-inspector'>{
     Object.values(stats)
       .map(
-        ({ key, title, evaluationDelta, outputs }) =>
-          <div key={key} className={`
+        ({ key, title, evaluationDelta, outputs, pattern }) =>
+          <div key={key} id={key} className={`
             cell-inspector-cell
             ${evaluationDelta[0] ? 'active' : 'inactive'}
             `}>
-            <span className='cell-inspector-cell-tag'>{title} ({outputs.length}) </span>
-            <SparkLine data={evaluationDelta} />
+            <div className='cell-inspector-cell-head'>
+              <span className='cell-inspector-cell-tag'>{title} ({outputs.length}) </span>
+              <SparkLine data={evaluationDelta} />
+            </div>
+            <table><tbody>{
+              Object.entries(pattern.props || {})
+                .map(([key, value]) =>
+                  <tr>
+                    <td className='key'>{key}</td>
+                    <td className='value'>{
+                      value instanceof Pattern
+                        ? <a href={`#${value.key}`} className='cell-inspector-cell'>{value.evaluator.name}</a>
+                        : excerpt(tag(value))
+                    }</td>
+                  </tr>
+                )
+            }</tbody></table>
           </div>
       )
     }</div>
 }
+
+const excerpt = (s: string) =>
+  s.length > 100 ? s.slice(0, 97) + '...' : s
 
 interface SparkLineProps {
   data: number[]

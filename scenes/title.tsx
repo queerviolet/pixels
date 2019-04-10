@@ -36,7 +36,17 @@ const COLOR_PICKER = isTablet ? <Picker
 export default {
   [`I'm going to paint you something`]: {
     draw: Title({ drawingHint: true }),
-    overlay: COLOR_PICKER
+    overlay: COLOR_PICKER,
+    note: `
+      I'm going to draw you something.
+
+      * ...draw, draw, draw... *
+      * look at screen *
+
+      Oh yeah, looks great.
+
+      * ...draw, draw, draw... *
+    `
   },
   force: {
     draw: Title({ drawingHint: true }),

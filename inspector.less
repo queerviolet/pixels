@@ -15,8 +15,7 @@
 
 .cell-inspector-cell {
   .rounded();
-  display: flex;
-  flex-flow: row nowrap;
+  font-family: Menlo;
   transition: opacity 1s, border-color 1s;
   font-size: 14px;
   padding: 4px;
@@ -25,6 +24,23 @@
 
   backdrop-filter: blur(5px);
   background: fadeout(black, 50%);
+
+  > table {
+    font-size: 12px;
+    .key {
+      color: @blue;
+    }
+  }
+}
+
+a.cell-inspector-cell {
+  text-decoration: none;
+  color: @blue;
+}
+
+.cell-inspector-cell-head {
+  display: flex;
+  flex-flow: row nowrap;
 }
 
 .cell-inspector-cell.dead {

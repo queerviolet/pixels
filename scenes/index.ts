@@ -35,7 +35,7 @@ export type Beat = Navigable & {
   order: number
   scene: Scene
   draw: Pattern
-  overlay?: ReactElement
+  overlay?: ReactElement | ReactElement[]
   note?: string
 }
 

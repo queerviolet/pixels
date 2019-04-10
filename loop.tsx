@@ -254,6 +254,10 @@ export const NilEvaluator = (_args, cell) => cell.value
 const getEvaluator = (pattern: any): Evaluator =>
   (pattern && pattern.evaluator) || NilEvaluator
 
+let currentCell = null
+export const $ = (pattern: any) => currentCell.read(pattern)
+export const $Child = (pattern: any) => currentCell.readChild(pattern)
+
 export class Cell {
   constructor(public readonly context: CellContext,
     public readonly pattern: Pattern,
@@ -329,7 +333,11 @@ export class Cell {
   public evaluate() {
     this.inputs.forEach(input => input.removeOutput(this))
     this.inputs.splice(0, this.inputs.length)
+    if (currentCell)
+      throw new Error('Cannot evaluate while another cell is evaluating')
+    currentCell = this
     this.value = this.evaluator(this.pattern.props, this)
+    currentCell = null    
     this.context.invalidateAll(Object.values(this.outputs))
   }
 
