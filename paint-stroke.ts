@@ -55,7 +55,8 @@ export default function PaintStroke(props: PaintStrokeProps, cell?: Cell) {
   const uProjection = cell.read(Camera.uProjection)
 
   return (framebuffer: Framebuffer) => {
-    if (cone && pos && force && pos.length && force.length && color.length) {
+    if (cone && pos && force && color &&
+        pos.length && force.length && color.length) {
       let batch = Math.min(batchSize, pos.length, force.length, color.length)
       while (batch --> 0) {
         const uPos = pos.shift()

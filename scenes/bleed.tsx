@@ -11,6 +11,11 @@ import Shader from '../shader'
 
 // @ts-ignore
 import skyline from '../manila-skyline.jpg'
+
+const hills = require('../batanes-hills.jpg')
+const lighthouse = require('../batanes-lighthouse.jpg')
+const pier = require('../batanes-pier.jpg')
+
 import { Cell, Seed } from '../loop'
 import { GRID_3x3, hbox, STAGE } from '../stage'
 import Code from '../code'
@@ -57,9 +62,11 @@ export default {
       <Code src='scenes/bleed.frag' frame={hbox(STAGE, 2)[0]} />,
     ]
   },
-  'Another one': {
-    draw: Paint({ node: 'batanes' }),
-    overlay: <ImagePicker />
+  'Batanes': {
+    draw: Bleed({ node: 'batanes' }),
+    overlay: <ImagePicker imgs={[
+      hills, lighthouse, pier
+    ]} />,
   }
 }
 
@@ -77,16 +84,16 @@ function Paint(props?, cell?: Cell) {
 
 function Bleed(props?, cell?: Cell) { 
   if (!cell) return Seed(Bleed, props)
-  const { output } = props
+  const { node='manila', output } = props
 
-  cell.read(RecordStroke({ node: 'manila', color }))
+  cell.read(RecordStroke({ node, color }))
 
-  const bleed = cell.read(BLEED)
+  const bleed = cell.readChild(BLEED)
 
   if (!bleed) return
 
   const paint = cell.read(PaintStroke({
-    node: 'manila',
+    node,
     batchSize: 80,
   } as any))
 

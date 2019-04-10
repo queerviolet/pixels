@@ -72,6 +72,7 @@ export default function Player({ play }: Props) {
   const [showInspector, toggleInspector] = useReducer(
     (isVisible: boolean) => !isVisible, false
   )
+  window['toggleInspector'] = toggleInspector
 
   const didGesture = useRef<boolean>()
 
