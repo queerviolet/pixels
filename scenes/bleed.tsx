@@ -163,7 +163,25 @@ export default {
   },
   'Batanes with inspector': {
     note: `
-      Kindof. 
+      Kindof.
+      
+      In a spreadsheet, you have this setup where some of your cells contain
+      raw values and other cells contain functions which can reference those
+      values. If you change one cell, then all the cells that depend on that
+      cell update. They don't necessarily update immediately. If you have a
+      lot of complex functions, it may take a while for the sheet to become
+      consistent again, but it will happen.
+      
+      That's basically what's going on here. Instead of indexing our cells by
+      row and column, we index them by key. And we compute those keys based
+      on the props and what we call the Evaluator for the cell.
+
+      Like a React component, Evaluators take props and immediately return a
+      value. And like React components, there's a little bit more to it than
+      that.
+
+      Let's look at the evaluator for the Bleed cell, which is drawing the
+      scene we're looking at right now:
     `,
     draw: Bleed({ node: 'batanes', color }),
     overlay: [
@@ -174,13 +192,53 @@ export default {
     ],
   },
   'Batanes with inspector and evaluator': {
+    note: `
+      Evaluators take props and a reference to the actual Cell they're evaluating.
+      If you don't provide a cell, the Evaluator returns a Pattern, which is
+      a lot like a virtual DOM element—it includes the props, and a reference to
+      this function, and that's it.
+
+      Unlike a component, this whole setup is designed to make it *super easy*
+      to reference other cells by their patterns.
+
+      So we use this $ function to connect another cell. That creates a
+      reference to the other cell and returns that cell's current value. 
+            
+      a RecordStroke cell, which will
+      attach event listeners to the canvas and send stroke data to the server and
+      so on.
+
+      And then we mount a Rumination, which is an Evaluator that handles the
+      infinite recurisve buffer-swapping shader business, just looping back
+      the shader's output to its input, forever.
+
+      PaintStroke returns a function that reads from the node we're
+      Recording to, and it draws sized dots for each input event. batchSize
+      is how many points it'll draw per frame, so you can use that as kindof
+      a crude way to change the speed that the painting redraws itself.
+
+      And then finally we return this Layer stack, the main point of which
+      is to composite our Rumination down into the output framebuffer
+      we were given by the player.
+
+      There's some real similarities between this and React. We do our own
+      kind of diff: every time we re-evaluate a cell, we detach all its
+      connections and allow the evaluator to reconnect the ones it's interested
+      in, by calling the connect function. If a Cell ends up with no connections
+      for more than a few ticks, we kill it, and free any resources associated
+      with it.
+
+      What's really nice about this setup is that in a steady state, it's
+      quite low overhead. Everything carries a key, so our diff is really
+      straightforward.
+    `,
     draw: Bleed({ node: 'batanes', color }),
     overlay: [
       <ImagePicker imgs={[
         hills, lighthouse, pier
       ]} />,
       <Inspector />,
-      <Code src='scenes/bleed.evaluator.ts' frame={hbox(STAGE, 2)[1]} />,
+      <Code key='scenes/bleed.evaluator.ts' src='scenes/bleed.evaluator.ts' frame={hbox(STAGE, 2)[1]} />,
     ]
   },
 }
