@@ -1,4 +1,4 @@
-import { Cone } from 'luma.gl'
+import { Cone, Framebuffer } from 'luma.gl'
 import { GLContext, Camera, Clock } from './contexts'
 import { Cell, Seed } from './loop'
 import { QueueBuffer } from './buffers'
@@ -6,7 +6,6 @@ import { QueueBuffer } from './buffers'
 type PaintStrokeProps = {
   node: string
   batchSize?: number
-  framebuffer: any
 }
 
 export default function PaintStroke(props: PaintStrokeProps, cell?: Cell) {  
@@ -16,9 +15,9 @@ export default function PaintStroke(props: PaintStrokeProps, cell?: Cell) {
 
   const { node, batchSize = 100 } = props
 
-  const pos = cell.read(QueueBuffer({ data: node + '/pos.vec2' }))
-  const force = cell.read(QueueBuffer({ data: node + '/force.float' }))
-  const color = cell.read(QueueBuffer({ data: node + '/color.vec4' }))
+  const pos = cell.readChild(QueueBuffer({ data: node + '/pos.vec2' }))
+  const force = cell.readChild(QueueBuffer({ data: node + '/force.float' }))
+  const color = cell.readChild(QueueBuffer({ data: node + '/color.vec4' }))
   if (!pos || !force || !color) return
 
   const cone = cell.effect<Cone>('cones', _ => {                  
@@ -55,22 +54,24 @@ export default function PaintStroke(props: PaintStrokeProps, cell?: Cell) {
 
   const uProjection = cell.read(Camera.uProjection)
 
-  if (cone && pos && force && pos.length && force.length && color.length) {
-    let batch = Math.min(batchSize, pos.length, force.length, color.length)
-    while (batch --> 0) {
-      const uPos = pos.shift()
-      const uForce = force.shift()
-      const uColor = color.shift()
-      cone.draw({
-        uniforms: {
-          uProjection,
-          uPos,
-          uForce,
-          uColor,
-        },
-        framebuffer: props.framebuffer,
-      })
+  return (framebuffer: Framebuffer) => {
+    if (cone && pos && force && pos.length && force.length && color.length) {
+      let batch = Math.min(batchSize, pos.length, force.length, color.length)
+      while (batch --> 0) {
+        const uPos = pos.shift()
+        const uForce = force.shift()
+        const uColor = color.shift()
+        cone.draw({
+          uniforms: {
+            uProjection,
+            uPos,
+            uForce,
+            uColor,
+          },
+          framebuffer
+        })
+      }
+      if (pos.length || force.length || color.length) cell.read(Clock)
     }
-    if (pos.length || force.length || color.length) cell.read(Clock)
   }
 }

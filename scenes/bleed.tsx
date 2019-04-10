@@ -21,7 +21,7 @@ let currentSampler: Sampler = asSampler(skyline)
 let currentSrc = skyline
 const color: Sampler = (x, y) => currentSampler(x, y)
 
-const ImagePicker = () => {
+const ImagePicker = ({ imgs=[skyline] }) => {
   if (!isTablet) return null
   const [src, setSrc] = useState(currentSrc)
   return <>
@@ -32,7 +32,7 @@ const ImagePicker = () => {
         setSrc(c)
       }}
       colors={[
-        skyline,
+        ...imgs,
         [1, 1, 1, 1],
         [0, 0, 0, 1],
         () => [Math.random(), Math.random(), Math.random(), 1.0],
@@ -40,7 +40,6 @@ const ImagePicker = () => {
     <img src={src} className='hint' />
   </>
 }
-
 
 export default {
   'Draw on the skyline': {
@@ -58,16 +57,22 @@ export default {
       <Code src='scenes/bleed.frag' frame={hbox(STAGE, 2)[0]} />
     </>
   },
+  'Another one': {
+    draw: Paint({ node: 'batanes' }),
+    overlay: <ImagePicker />
+  }
 }
 
 function Paint(props?, cell?: Cell) {
-  if (!cell) return Seed(Paint, {})
-  cell.read(RecordStroke({ node: 'manila', color }))
-  cell.read(PaintStroke({
-    node: 'manila',
-    framebuffer: props.output,
+  if (!cell) return Seed(Paint, props)
+  const { node='manila' } = props
+  cell.read(RecordStroke({ node, color }))
+  const paint = cell.read(PaintStroke({
+    node,
     batchSize: 100,
   } as any))
+
+  paint && paint(props.output)
 }
 
 function Bleed(props?, cell?: Cell) { 
@@ -80,11 +85,12 @@ function Bleed(props?, cell?: Cell) {
 
   if (!bleed) return
 
-  cell.read(PaintStroke({
+  const paint = cell.read(PaintStroke({
     node: 'manila',
-    framebuffer: bleed.input,
-    batchSize: 20,
+    batchSize: 80,
   } as any))
+
+  paint && paint(bleed.dst)
 
   cell.read(Layers([
     { output: bleed, opacity: 1.0 },
