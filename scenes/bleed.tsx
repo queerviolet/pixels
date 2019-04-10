@@ -21,6 +21,8 @@ import isTablet from '../view-mode'
 import Bleed from './bleed.evaluator'
 import Inspector from '../inspector'
 
+const fs = require('./bleed.frag')
+
 let currentSampler: Sampler = asSampler(skyline)
 let currentSrc = skyline
 const color: Sampler = (x, y) => currentSampler(x, y)
@@ -51,7 +53,7 @@ export default {
     overlay: <ImagePicker />
   },
   'Bleed them together': {
-    draw: Bleed({ node: 'manila', color }),
+    draw: Bleed({ node: 'manila', color, fs }),
     overlay: <ImagePicker />
   },
   'Bleed fragment shader': {
@@ -84,7 +86,7 @@ export default {
 
       But it's not. I mean, it *is*, in a sense...
     `,
-    draw: Bleed({ node: 'batanes', color }),
+    draw: Bleed({ node: 'batanes', color, fs }),
     overlay: <ImagePicker imgs={[
       hills, lighthouse, pier
     ]} />,  
@@ -117,7 +119,7 @@ export default {
       And then the time will come to animate a component, and I'll say,
       "I know! I'll just do something this..."
     `,
-    draw: Bleed({ node: 'batanes', color }),
+    draw: Bleed({ node: 'batanes', color, fs }),
     overlay: [
       <ImagePicker imgs={[
         hills, lighthouse, pier
@@ -148,7 +150,7 @@ export default {
 
       We're using a spreadsheet.
     `,
-    draw: Bleed({ node: 'batanes', color }),
+    draw: Bleed({ node: 'batanes', color, fs }),
     overlay: [
       <ImagePicker imgs={[
         hills, lighthouse, pier
@@ -179,7 +181,7 @@ export default {
       Let's look at the evaluator for the Bleed cell, which is drawing the
       scene we're looking at right now:
     `,
-    draw: Bleed({ node: 'batanes', color }),
+    draw: Bleed({ node: 'batanes', color, fs }),
     overlay: [
       <ImagePicker imgs={[
         hills, lighthouse, pier
@@ -237,7 +239,7 @@ export default {
 
       This one is pretty stable. Others, won't be.
     `,
-    draw: Bleed({ node: 'batanes', color }),
+    draw: Bleed({ node: 'batanes', color, fs }),
     overlay: [
       <ImagePicker imgs={[
         hills, lighthouse, pier

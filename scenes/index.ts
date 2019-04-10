@@ -2,11 +2,13 @@ import { ReactElement } from 'react'
 
 import title from './title'
 import bleed from './bleed'
+import shading from './shading-around'
 import { Pattern } from 'loop';
 
 const presentation = createPresentation({
   title,
-  bleed
+  bleed,
+  shading
 })
 
 export default presentation

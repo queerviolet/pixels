@@ -1,10 +1,10 @@
 // Ex:
 //
-//    Bleed({ node: 'batanes', color })
+//    Bleed({ node: 'batanes', color, fs: require('./bleed.frag') })
 //
 export default function Bleed(props?, cell?: Cell) { 
   if (!cell) return Seed(Bleed, props)
-  const { node, output, color } = props
+  const { node, output, color, fs } = props
 
   $(RecordStroke({ node, color }))
 
@@ -13,7 +13,7 @@ export default function Bleed(props?, cell?: Cell) {
       uniforms: { uStep: 0.001, },
       shader: Shader({
         vs: require('../stage.vert'),
-        fs: require('./bleed.frag'),
+        fs,
       })
     })
   )  

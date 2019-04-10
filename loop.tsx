@@ -143,21 +143,22 @@ export function createLoop(): CellContext {
       //  console.log('%c Beginning evaluation of %s cells', 'color: red', cells.size)
       if (!cells.size) return
       dirty.clear()
-      let current = null
       try {
         for (const cell of cells) {
-          current = cell
           if (cell.lastEvaluatedAt === now) {
             deferred.add(cell)
             continue
           }
           cell.lastEvaluatedAt = now
           ++cell.evaluationCount
+          currentCell = cell
           cell.evaluate()
+          currentCell = null
         }
       } catch (error) {
-        console.error(new EvaluationError(error, current))
+        console.error(new EvaluationError(error, currentCell))
         console.error(error)
+        currentCell = null
       }
       // console.log('%c did evaluate %s cells', 'color: red', cells.size)
       didEvaluate(cells)
@@ -333,11 +334,7 @@ export class Cell {
   public evaluate() {
     this.inputs.forEach(input => input.removeOutput(this))
     this.inputs.splice(0, this.inputs.length)
-    if (currentCell)
-      throw new Error('Cannot evaluate while another cell is evaluating')
-    currentCell = this
     this.value = this.evaluator(this.pattern.props, this)
-    currentCell = null    
     this.context.invalidateAll(Object.values(this.outputs))
   }
 
