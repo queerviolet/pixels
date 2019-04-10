@@ -17,6 +17,9 @@ import { state as synced, State as StateNode, Loading } from 'parcel-plugin-writ
 import { BuildIn } from './anim'
 import { isTablet } from './view-mode'
 
+import dedent from 'dedent'
+import ReactMarkdown from 'react-markdown'
+
 const ReactCSSTransitionGroup = require('react-addons-css-transition-group')
 
 export interface Props {
@@ -75,6 +78,10 @@ export default function Player({ play }: Props) {
   )
   window['toggleInspector'] = toggleInspector
 
+  const [notesExpanded, toggleNotes] = useReducer(
+    (isExpanded: boolean) => !isExpanded, false
+  )
+
   const didGesture = useRef<boolean>()
 
   useEffect(
@@ -88,7 +95,24 @@ export default function Player({ play }: Props) {
       playerState.set(state.current && state.current.id)
       didGesture.current = false
     }
+    const noteEl = state.current['.noteElement']
+    noteEl && noteEl.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [state])
+
+  const next = useMemo(() => () => {
+    didGesture.current = true
+    return go({type: 'next'})
+  }, [go])
+
+  const prev = useMemo(() => () => {
+    didGesture.current = true
+    return go({type: 'prev'})
+  }, [go])
+
+  const seek = useMemo(() => (beat: Beat) => {
+    didGesture.current = true
+    return go({type: 'seek', beat})
+  }, [go])
 
   useEffect(() => {
     addEventListener('keydown', onKeyDown)
@@ -98,14 +122,12 @@ export default function Player({ play }: Props) {
       case 'ArrowRight':
       case 'ArrowDown':
       case 'PageDown':
-        didGesture.current = true
-        return go({type: 'next'})
+        return next()
 
       case 'ArrowLeft':
       case 'ArrowUp':
       case 'PageUp':
-      didGesture.current = true
-        return go({type: 'prev'})
+        return prev()
 
       case '`':
         return toggleInspector('toggle')
@@ -126,36 +148,10 @@ export default function Player({ play }: Props) {
 
   return <>
     <Eval>{
-      (_, cell) => {
-        // const a = cell.readChild(Framebuffer({name: 'A'}))
-        // const b = cell.readChild(Framebuffer({name: 'B'}))
-        // if (!a || !b) return
-
-        // const last = cell.effect<{beat: Beat, framebuffers: Luma.Framebuffer[]}>('last-beat', (_, )=> {
-        //   _({
-        //     beat: null,
-        //     framebuffers: [a, b]
-        //   })
-        // }, [a, b])
-
+      (_, cell) => {        
         const state = cell.read<State>(PresentationContext.playState)
         if (!state) return
-        const { ts, current, prev } = state
-
-        // if (current !== last.beat) {
-        //   console.log('changing from', last.beat, 'to', current)
-        //   last.beat = current
-        // }
-        // if (!current) return
-
-        // const output = cell.readChild(Framebuffer({name: 'output'}))
-
-        // cell.read(current.draw.withProps({ output }))
-
-        // const start = state.ts
-        // const end = start + 20
-        // const now = cell.read(Clock)
-        // const t = Math.min(1.0, (now - start) / (end - start))
+        const { current, prev } = state
 
         const opacity = cell.read(BuildIn({ beat: current.id, ms: 300 }))
         if (typeof opacity !== 'number') return
@@ -180,31 +176,27 @@ export default function Player({ play }: Props) {
     { showInspector ? <Inspector /> : null }
     {
       isTablet ?
-        <div className='fixed-bar-1'>
-          <div className='note'>{
-            state.current.note || null
-          }</div>
-        </div>
+        <>
+          <div className='fixed-bar-1'>
+            <button className='player-prev' onClick={prev} onTouchStart={prev}>Prev</button>
+            <button className='player-next' onClick={next} onTouchStart={next}>Next</button>
+          </div>
+          <div
+            className={`notes ${notesExpanded ? 'expanded' : ''}`}
+            onClick={toggleNotes}
+          >{
+            Object.values(play.beats)
+              .map(beat =>
+                <div key={beat.id}
+                  ref={e => beat['.noteElement'] = e}
+                  className={`note ${state.current === beat ? 'current' : ''}`}>
+                  <h1 onClick={e => { e.stopPropagation(); seek(beat) }}>{beat.id}</h1>
+                  <ReactMarkdown source={dedent(beat.note || '')} />
+                </div>
+              )
+          }</div>       
+        </>
       : null    
     }
   </>
 }
-
-// export default function SyncPlayer({ play }: Props) {
-//   const [initial, setInitial] = useState<string | Loading>(Loading)
-//   const playerState = useMemo(() => state<string>('player.state'), [])
-
-//   useEffect(() => {
-//     const current = playerState.value
-//     if (current !== Loading) return setInitial(current)
-//     console.log('current=', current)
-//     const disconnect = playerState(beat => {
-//       console.log('got beat=', beat)
-//       setInitial(beat)
-//       disconnect()
-//     })
-//     return disconnect
-//   }, [playerState])
-//   if (initial === Loading) return <h1>⌚️</h1>
-//   return <Player play={play} playerState={playerState} initialBeat={initial as string} />
-// }

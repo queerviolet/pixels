@@ -1,7 +1,8 @@
+@import './colors.less';
 @import './inspector.less';
 @import './panel.less';
 
-body { background: black; color: white; }
+body { background: #111; color: white; }
 
 canvas {
   position: fixed;
@@ -75,11 +76,55 @@ img.hint {
   opacity: 0.2;
 }
 
-.note {
-  height: 100%;
-  position: relative;
+.notes {
+  .monospace();
+  position: fixed;
+  background: #111;
+  height: var(--letterbox-bars-0-height);
+  width: calc(var(--letterbox-bars-0-width) - 10vw);
   left: 5vw;
-  width: calc(100% - 10vw);
+  bottom: 0;
   font-size: 12px;
   overflow: auto;
+  transition: height 500ms;
+  -webkit-overflow-scrolling: touch;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  > .note {
+    &.current > h1 { color: @blue; }
+
+    > h1 {
+      font-size: 14px;
+    }
+  }
+
+  &.expanded {
+    height: 100vh;
+  }
+}
+
+.player-next, .player-prev {
+  .rounded();
+  position: absolute;
+  display: block;
+  height: 100%;
+  width: 5vw;
+  bottom: 0;
+  background: fadeout(@blue, 90%);
+  color: @blue;
+  border: thin solid @blue;
+  transition: box-shadow 500ms;
+
+  &:active {
+    background: fadeout(@blue, 50%);
+    box-shadow: 5px 5px 10px fadeout(@blue, 80%);
+  }
+
+  outline: none;
+}
+
+.player-next {
+  right: 0;
 }

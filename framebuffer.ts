@@ -5,9 +5,10 @@ import { GLContext, Clock } from './contexts'
 export function Framebuffer(props: any = {}, cell?: Cell) {
   if (!cell) return Seed(Framebuffer, props)
   const gl = cell.read(GLContext); if (!gl) return
+
+  const { width=gl.drawingBufferWidth, height=gl.drawingBufferHeight } = props
+
   return cell.effect<LumaFramebuffer>('the framebuffer', _ => {
-    const width = gl.drawingBufferWidth
-    const height = gl.drawingBufferHeight
     const framebuffer = new LumaFramebuffer(gl, {
       id: cell.key,
       width, height, depth: true,
@@ -18,7 +19,7 @@ export function Framebuffer(props: any = {}, cell?: Cell) {
     return () => {
       framebuffer._deleteHandle()
     }
-  }, [gl, gl.drawingBufferWidth, gl.drawingBufferHeight])
+  }, [gl, width, height])
 }
 
 export function Swapper(props: any = {}, cell?: Cell) {
@@ -27,8 +28,10 @@ export function Swapper(props: any = {}, cell?: Cell) {
   const gl = cell.read(GLContext); if (!gl) return
   cell.read(Clock)
 
-  const offscreenA = cell.readChild(Framebuffer({ id: 'A' }))
-  const offscreenB = cell.readChild(Framebuffer({ id: 'B' }))
+  const { width, height } = props
+
+  const offscreenA = cell.readChild(Framebuffer({ id: 'A', width, height }))
+  const offscreenB = cell.readChild(Framebuffer({ id: 'B', width, height }))
 
   const ticktock = cell.effect<{ tick: boolean }>('ticktock', _ => _({ tick: false }), [])
   ticktock.tick = !ticktock.tick;              

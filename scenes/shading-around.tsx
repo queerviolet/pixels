@@ -49,18 +49,18 @@ const ImagePicker = ({ imgs=[skyline] }) => {
   </>
 }
 
-const withCode = (shader: { [name: string]: string }, node='batanes') => {
+const withCode = (shader: { [name: string]: string }, node='batanes', props={}) => {
   const [[name, fs]] = Object.entries(shader)
   const src = `scenes/${name}.frag`
   return {
     [name]: {
-      draw: Bleed({ node, color, fs }),
+      draw: Bleed({ node, color, fs, ...props }),
       overlay: <ImagePicker key='IMAGE_PICKER' imgs={[
         hills, lighthouse, pier
       ]} />,
     },
     [`${name} code`]: {
-      draw: Bleed({ node, color, fs }),
+      draw: Bleed({ node, color, fs, ...props }),
       overlay: [
         <ImagePicker key='IMAGE_PICKER' imgs={[
           hills, lighthouse, pier
@@ -71,6 +71,7 @@ const withCode = (shader: { [name: string]: string }, node='batanes') => {
   }
 }
 
+import { frame } from '../stage'
 export default {
   ...withCode({blur}),
   ...withCode({afterimage}),  

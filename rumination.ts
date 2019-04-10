@@ -10,12 +10,15 @@ export interface Props {
   shader: Shader
   uniforms?: object
   opacity?: number
+  width?: number
+  height?: number
 }
 
 export default function Rumination(props: Props, cell?: Cell) {
   if (!cell) return Seed(Rumination, props)
+  const { width, height } = props
 
-  const framebuffers = cell.readChild(Swapper())
+  const framebuffers = cell.readChild(Swapper({ width, height }))
   const shader = cell.read(props.shader)
   const uniforms = cell.read(ReadObject(props.uniforms || {}))
   const aPosition = cell.read(Stage.aPosition)

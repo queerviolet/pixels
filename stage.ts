@@ -11,7 +11,7 @@ const MIN: StageCoordinates = [X_MIN, Y_MIN]
 const MAX: StageCoordinates = [X_MAX, Y_MAX]
 export const STAGE: StageRect = [MIN, MAX]
 
-let frame: Box | null = null
+export let frame: Box | null = null
 applyLetterbox(WIDTH / HEIGHT, box => {
   frame = box
   document.body.style.setProperty('--su', frame.width / (WIDTH * 2) + 'px')

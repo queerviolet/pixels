@@ -11,6 +11,8 @@ export default function Bleed(props?, cell?: Cell) {
   const bleed = $Child(
     Rumination({
       uniforms: { uStep: 0.001, },
+      width: props.width,
+      height: props.height,
       shader: Shader({
         vs: require('../stage.vert'),
         fs,
