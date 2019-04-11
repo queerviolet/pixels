@@ -37,7 +37,7 @@ export default function RecordStroke(props: Props, cell?: Cell) {
 
     function onTouch(t: TouchEvent) {
       const { touches } = t
-      t.preventDefault()
+      t.preventDefault()      
       let i = touches.length; while (i --> 0) {
         const touch = touches.item(i)
         if (touch.touchType !== 'stylus') continue

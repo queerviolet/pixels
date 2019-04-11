@@ -1,14 +1,19 @@
 import { Cone, Framebuffer } from 'luma.gl'
 import { GLContext, Camera, Clock } from './contexts'
-import { Cell, Seed } from './loop'
+import { Cell, Seed, Pattern } from './loop'
 import { QueueBuffer } from './buffers'
 
 type PaintStrokeProps = {
   node: string
   batchSize?: number
+  deltaColor?: boolean
 }
 
-export default function PaintStroke(props: PaintStrokeProps, cell?: Cell) {  
+interface StrokeCell extends Cell {
+  lastPosition: Float32Array
+}
+
+export default function PaintStroke(props: PaintStrokeProps, cell?: StrokeCell) {  
   if (!cell) return Seed(PaintStroke, props)
   if (!props.node) return
   const gl = cell.read(GLContext); if (!gl) return 
@@ -61,7 +66,19 @@ export default function PaintStroke(props: PaintStrokeProps, cell?: Cell) {
     while (batch --> 0) {
       const uPos = pos.shift()
       const uForce = force.shift()
-      const uColor = color.shift()
+      let uColor = color.shift()
+      
+      if (props.deltaColor) {        
+        if (!cell.lastPosition) {          
+          cell.lastPosition = uPos
+          continue
+        }
+        const [x0, y0] = cell.lastPosition
+        const [x1, y1] = uPos
+        cell.lastPosition = uPos
+        uColor = Float32Array.from([x1 - x0, y1 - y0, 0, 0])
+      }
+
       cone.draw({
         uniforms: {
           uProjection,

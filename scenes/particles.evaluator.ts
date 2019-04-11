@@ -1,14 +1,10 @@
-// Ex:
-//
-//    Bleed({ node: 'batanes', color, fs: require('./bleed.frag') })
-//
-export default function Bleed(props?, cell?: Cell) { 
-  if (!cell) return Seed(Bleed, props)
+export default function Particles(props?, cell?: Cell) { 
+  if (!cell) return Seed(Particles, props)
   const { node, output, color, fs } = props
 
   $(RecordStroke({ node, color }))
 
-  const bleed = $Child(
+  const particles = $Child(
     Rumination({
       uniforms: { uStep: 0.001, },
       width: props.width,
@@ -19,21 +15,29 @@ export default function Bleed(props?, cell?: Cell) {
       })
     })
   )  
-  if (!bleed) return
+  if (!particles) return
 
-  const paint = $Child(
-    PaintStroke({
+  // const paint = $Child(
+  //   PaintStroke({
+  //     node,
+  //     batchSize: 80,
+  //     deltaColor: props.deltaColor,
+  //   })
+  // )
+
+  const emit = $Child(
+    PaintParticles({
       node,
       batchSize: 80,
-      deltaColor: props.deltaColor,
     })
   )
+  emit && emit(particles.dst)
 
-  paint && paint(bleed.dst)
+  // paint && paint(bleed.dst)
 
   return $(
     Layers([
-      { output: bleed, opacity: 1.0 },
+      { output: particles, opacity: 1.0 },
       { destination: output }
     ])
   )
@@ -50,4 +54,7 @@ import RecordStroke from '../record-stroke'
 import Rumination from '../rumination'
 import Shader from '../shader'
 import PaintStroke from '../paint-stroke'
+import PaintParticles from '../paint-particles'
 import Layers from '../layers'
+import { Framebuffer } from '../framebuffer'
+
