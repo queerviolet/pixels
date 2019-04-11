@@ -30,6 +30,7 @@ export default function Rumination(props: Props, cell?: Cell) {
 
   if (!framebuffers || !shader || !uniforms || !aPosition) return
   const { src, dst } = framebuffers
+  if (!src || !dst) return
 
   uniforms.uInput = src.color
 
@@ -42,8 +43,9 @@ export default function Rumination(props: Props, cell?: Cell) {
     drawMode: TRIANGLE_STRIP,
     framebuffer: dst,
     uniforms: {
+      ...uniforms,
       uInput: src.color,
-      uStep: 0.001,
+      uStep: Float32Array.from([1 / width, 1 / height]),
     }
   })
 

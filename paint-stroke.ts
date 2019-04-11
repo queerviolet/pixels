@@ -61,6 +61,8 @@ export default function PaintStroke(props: PaintStrokeProps, cell?: StrokeCell) 
   if (!uProjection) return
 
   return (framebuffer: Framebuffer) => {
+    gl.viewport(0, 0, framebuffer.width, framebuffer.height)
+
     if (!cone || !pos || !force || !color) return
     let batch = Math.min(batchSize, pos.length, force.length, color.length)
     while (batch --> 0) {

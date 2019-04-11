@@ -4,13 +4,14 @@ import title from './title'
 import bleed from './bleed'
 import shading from './shading-around'
 import particles from './particles'
+import life from './life'
 import { Pattern } from 'loop';
 
 const presentation = createPresentation({
   title,
   bleed,
   shading,
-  particles
+  life,
 })
 
 export default presentation

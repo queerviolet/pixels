@@ -1,7 +1,7 @@
 precision highp float;
 uniform sampler2D uInput;
 varying vec3 vPosition;
-uniform float uStep;
+uniform vec2 uStep;
 
 vec4 flow() {
   vec4 self = texture2D(uInput, vec2(vPosition));
@@ -11,8 +11,8 @@ vec4 flow() {
       if (dx == 0.0 && dy == 0.0) continue;
       vec4 val = texture2D(uInput,
         vec2(vPosition) + vec2(
-          uStep * dx,
-          uStep * dy
+          uStep.x * dx,
+          uStep.y * dy
         )
       );
       mass += length(val);
@@ -24,8 +24,8 @@ vec4 flow() {
       if (dx == 0.0 && dy == 0.0) continue;
       vec4 val = texture2D(uInput,
         vec2(vPosition) + vec2(
-          uStep * dx,
-          uStep * dy
+          uStep.x * dx,
+          uStep.y * dy
         )
       );      
       color += val * 1.002 * (length(val) / mass);

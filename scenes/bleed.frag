@@ -1,7 +1,7 @@
 precision highp float;
 uniform sampler2D uInput;
 varying vec3 vPosition;
-uniform float uStep;
+uniform vec2 uStep;
 
 vec4 bleed() {
   vec4 self = texture2D(uInput, vec2(vPosition));
@@ -10,8 +10,8 @@ vec4 bleed() {
     for (float dy = -1.0; dy <= 1.1; ++dy) {
       vec4 val = texture2D(uInput,
         vec2(vPosition) + vec2(
-          uStep * dx,
-          uStep * dy
+          uStep.x * dx,
+          uStep.y * dy
         )
       );
       float distance = val.a + length(vec2(dx, dy)) / 500.0;

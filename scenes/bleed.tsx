@@ -42,7 +42,7 @@ const ImagePicker = ({ imgs=[skyline] }) => {
         [1, 1, 1, 1],
         [0, 0, 0, 1],
         () => [Math.random(), Math.random(), Math.random(), 1.0],
-      ]} /> : null
+      ]} />
     <img src={src} className='hint' />
   </>
 }

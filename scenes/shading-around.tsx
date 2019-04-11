@@ -39,7 +39,7 @@ const ImagePicker = ({ imgs=[hills, lighthouse, pier] }) => {
         [1, 1, 1, 1],
         [0, 0, 0, 1],
         () => [Math.random(), Math.random(), Math.random(), 1.0],
-      ]} /> : null
+      ]} />
     <img src={src} className='hint' />
   </>
 }
@@ -61,6 +61,7 @@ const withCode = (shader: { [name: string]: string }, node='batanes', props={}) 
     },
   }
 }
+import { frame } from '../stage'
 
 export default {
   ...withCode({blur}),
