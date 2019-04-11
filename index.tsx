@@ -17,7 +17,6 @@ const QUAD_VERTS = new Float32Array([
   1, 1, 0,   -1, 1, 0,
   1, -1, 0, -1, -1, 0])
 
-
 import defaultClient from './parcel-plugin-writable/src/client'
 import Player from './player'
 

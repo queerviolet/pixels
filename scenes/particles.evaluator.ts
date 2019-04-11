@@ -7,14 +7,18 @@ export default function Particles(props?, cell?: Cell) {
   const particles = $Child(
     Rumination({
       uniforms: { uStep: 0.001, },
-      width: props.width,
-      height: props.height,
+      width: 128,
+      height: 128,
       shader: Shader({
         vs: require('../stage.vert'),
         fs,
       })
     })
   )  
+
+  // const particles = $Child(
+  //   Framebuffer({ width: 128, height: 128 })
+  // )
   if (!particles) return
 
   // const paint = $Child(

@@ -9,6 +9,7 @@ export function Framebuffer(props: any = {}, cell?: Cell) {
   const { width=gl.drawingBufferWidth, height=gl.drawingBufferHeight } = props
 
   return cell.effect<LumaFramebuffer>('the framebuffer', _ => {
+    console.log('dimensions of', cell.key, width, height);
     const framebuffer = new LumaFramebuffer(gl, {
       id: cell.key,
       width, height, depth: true,

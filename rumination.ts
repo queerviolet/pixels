@@ -1,10 +1,10 @@
 import { TRIANGLE_STRIP } from 'luma.gl/constants'
 
-import { Cell, Seed, ReadObject } from './loop'
+import { $, Cell, Seed, ReadObject } from './loop'
 
 import { Shader } from './shader'
 import { Swapper } from './framebuffer'
-import { Stage } from './contexts'
+import { Stage, GLContext } from './contexts'
 
 export interface Props {
   shader: Shader
@@ -16,7 +16,11 @@ export interface Props {
 
 export default function Rumination(props: Props, cell?: Cell) {
   if (!cell) return Seed(Rumination, props)
-  const { width, height } = props
+  const gl = $(GLContext)
+  if (!gl) return
+
+  const { width=gl.drawingBufferWidth,
+          height=gl.drawingBufferHeight } = props
 
   const framebuffers = cell.readChild(Swapper({ width, height }))
   const shader = cell.read(props.shader)
@@ -31,6 +35,7 @@ export default function Rumination(props: Props, cell?: Cell) {
 
   shader.vertexArray.setAttributes({ aPosition })
 
+  gl.viewport(0, 0, width, height);
   shader.program.draw({
     vertexArray: shader.vertexArray,
     vertexCount,

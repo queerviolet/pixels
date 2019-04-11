@@ -18,7 +18,7 @@ interface ParticleCell extends Cell {
 export default function PaintParticles(props: Props, cell?: ParticleCell) {  
   if (!cell) return Seed(PaintParticles, props)
   if (!props.node) return
-  const gl = cell.read(GLContext); if (!gl) return 
+  const gl = cell.read<WebGLRenderingContext>(GLContext); if (!gl) return 
 
   const { node, batchSize=100 } = props
 
@@ -43,7 +43,7 @@ export default function PaintParticles(props: Props, cell?: ParticleCell) {
         
         void main() {
           gl_Position = vec4(uPos, 0.0, 1.0);
-          gl_PointSize = 8.0;
+          gl_PointSize = 1.0;
           vColor = uColor;
         }
       `
@@ -54,7 +54,7 @@ export default function PaintParticles(props: Props, cell?: ParticleCell) {
     if (!shader || !pos || !force || !color) return
     let batch = Math.min(batchSize, pos.length, force.length, color.length)
     cell.writeIndex = cell.writeIndex || 0
-    
+
     while (batch --> 0) {
       const uPos = pos.shift()
       const uForce = force.shift()
@@ -68,13 +68,9 @@ export default function PaintParticles(props: Props, cell?: ParticleCell) {
       cell.lastPosition = uPos
       uColor = Float32Array.from([...uPos, x1 - x0, y1 - y0].map(Math.abs).map(x => x / 4))
 
-      // const x = 32 * ((cell.writeIndex % framebuffer.width) / framebuffer.width) - 16
-      // const y = 18 * ((Math.floor(cell.writeIndex / framebuffer.width)) / framebuffer.height) - 9
-
       const dx = 2 / framebuffer.width
       const dy = 2 / framebuffer.height
 
-      const p = cell.writeIndex / framebuffer.width
       const x = -1 + (cell.writeIndex % framebuffer.width) * dx
       const y = -1 + (cell.writeIndex / framebuffer.width) * dy
 
@@ -89,7 +85,9 @@ export default function PaintParticles(props: Props, cell?: ParticleCell) {
       withParameters(gl, {
         [gl.BLEND]: false,
         framebuffer
-      }, () =>
+      }, () => {
+        gl.viewport(0, 0, framebuffer.width, framebuffer.height)
+        
         shader.program.draw({
           vertexArray: shader.vertexArray,
           vertexCount: 1,
@@ -101,9 +99,11 @@ export default function PaintParticles(props: Props, cell?: ParticleCell) {
             uColor,
           },
         })
-      )
+      })
 
       ++cell.writeIndex;
+      if (cell.writeIndex === framebuffer.width * framebuffer.height)
+        cell.writeIndex = 0
     }
     if (pos.length || force.length || color.length) cell.read(Clock)
   }
