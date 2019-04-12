@@ -38,20 +38,110 @@ And hey look, we have a title card! Everyone loves title cards.
 
 So what I was just making you do was... basically *be* a vertex shader. What's a vertex shader? Well, a vertex shader is the thing I was just trying to make you BE.
 
-Okay, better answer: In OpenGL, a vertex shader is a program that runs on every vertex and determines how that vertex will be transformed and presented. And it looks like this:
+Okay, better answer: In OpenGL, a vertex shader is a program that runs on every point and determines how that vertex—that point—is going to be transformed and presented. Basically, where will it be, and what data should be associated
+with it?
+
+Our vertex shader looks like this:
 
 # title/vertex-shader
 
+So, some terms. "Uniforms" are inputs to the vertex shader which are uniform.
+They don't change from vertex to vertex. Here, we've got one uniform, and it's
+our projection matrix. That is, it's a block of sixteen numbers that describes
+how to turn points on the stage into points on the screen. Through the magic
+of linear algebra.
 
+Then we have attributes. These are also inputs, but they are different for
+each vertex. We've got three columns representing data from
+our stroke: position, force, and color.
+
+Finally, there's some outputs. We're using a couple of built-in outputs: gl_Position, and gl_PointSize, which do
+pretty much what you'd expect. And then we have one "custom"
+output, this varying variable called "vColor". It's called a varying because it... varies. Not just from vertex to vertex, but also from pixel to pixel.
+
+Speaking of pixels, we get to write a program to color each and every single one.
 
 # title/fragment-shader
+
+Ours is super simple right now. We take the color from the vertex. And then we say, yep. That's our color.
+
+Okay, so how do we go from me doodling on here to stuff getting drawn up there?
+
+# reading stroke data
+
+Well, the answer is through what is pretty definitely the most overengineered
+system I have ever built for a talk.
+
+We listen to stylus events on the iPad, and spray them across a websocket
+to a server running on my laptop. The server is of course running inside of
+parcel, because why the hell not?
+
+And there's so many more layers in there, I can't even tell you. There's a
+structure library, which lets you describe interleaved data formats so we can
+just stream stroke data without headers and the server can unpack it into
+separate column IO files. And then I commented that out, because it
+didn't really work. The messaging protocol supports a peer to peer
+arrangement, it's... It's ridiculous.
+
+Anyway, here's how we *read* the stroke data. We create three VertexArrayBuffer
+cells and point them at three files on my disk and the data gets streamed across,
+and into a buffer on the graphics card
+
+# binding attributes
+Then we bind those columns to vertex attributes.
+
+# draw it
+And we draw it.
+
+So, this is the actual code that's running right now. I'm skipping over a lot, because I like you and want you to be happy.
+
+Two quick things: We're using Luma.gl, which I *super* recommend. It's a great WebGL library, made by the data viz folks at Uber. So: great library, ethically questionable company, feels right.
+
+The other machinery is part of the reactive framework that underlies all this,
+which is a wild experiment in making React's evil twin.
+
 # title/litebrite-mode
+
+Put it all together, and you get what my friend calls litebrite mode.
+
+And it already feels pretty good! I can doodle, and it's got kindof a retro
+games aesthetic, but I like it.
+
 # title/opacity
+If we wanted it to be a little more naturalistic, we could make the points'
+opacity depend on the force.
+
 # title/opacity-with-code
+So now we've basically evolved to crayon level. That's what this feels like.
+It's not Procreate. It's not Painter. But it's a step down that road.
+
+One thing you might be noticing is that we don't have a lot of colors on screen.
+
+There's no reason for that. It's not hard. I just didn't put more colors in
+the palette. So we've got this kindof aggressively neon CGA debug color scheme,
+which comforts me.
+
+But there's other ways to get colors than picking them.
+
 # bleed/Draw-on-the-skyline
+Or, rather, there's other ways to pick them. Here, I'm picking them from an
+underlying image. There's a city happening here.
+
+At this point, you might be wondering, "Hey, Ashi, this is cool, but where's
+React?" And that's a really good question, and I just want to say, watercolors.
+
+Watercolors are really cool, aren't they? I think painting this city with
+watercolors would really emphasize the way the light was falling out of the sky.
+
 # bleed/Bleed-them-together
+Boom.
+
+It's not *exactly* watercolor, but it's something like it. And it's still... going. Like, constantly building itself.
+
 # bleed/Bleed-fragment-shader
-This is Batanes talk abt Batanes...
+All this is happening in the fragment shader. We are kindof making a voronoi diagram, slowly and lazily and somewhat sloppily.
+
+I'm not going to dive in TOO hard, but we're basically commandeer
 
 # bleed/Batanes
 These are actually three separate photos. I'm just using this selector, which you can't see, to pick which image I'm sampling colors from. So I can create this kindof glitchy watercolor collage effect.

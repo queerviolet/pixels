@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 import Highlight, { defaultProps, Language } from 'prism-react-renderer'
 import theme from 'prism-react-renderer/themes/vsDark'
@@ -22,9 +22,11 @@ type Props = {
 export default ({ src, title, frame, language='typescript' as Language, scrollTo, highlight }: Props) => {
   const code = useSource(src)
   const lineRefs = scrollTo ?
-    { [scrollTo]: e =>
-        e && e.scrollIntoView({ behavior: 'smooth', block: 'center' }) }
-    : {}
+    {
+      [scrollTo]: e => {
+        e && e.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+    } : {}
   return <Panel title={title || basename(src)} frame={frame}>
     <Code highlight={highlight} lineRefs={lineRefs} language={language}>{code}</Code>
   </Panel>

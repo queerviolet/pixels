@@ -57,7 +57,7 @@ export default {
     overlay: <ImagePicker />
   },
   'Bleed fragment shader': {
-    note: `This is Batanes [talk abt Batanes]...`,
+    note: `Fragment shader`,
     draw: Bleed({ node: 'manila', color, fs }),
     overlay: [
       <ImagePicker />,

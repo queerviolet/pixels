@@ -105,6 +105,33 @@ export default {
       <Code key='points.basic.frag' src='points.basic.frag' frame={GRID_2x2[0][1]} />,
     ]
   },
+  'reading stroke data': {
+    draw: Title({ drawingHint: true, color }),
+    overlay: [
+      COLOR_PICKER,
+      <Code key='points.basic.vert' src='points.basic.vert' frame={GRID_2x2[0][0]} />,
+      <Code key='points.basic.frag' src='points.basic.frag' frame={GRID_2x2[0][1]} />,
+      <Code key='points.ts' src='points.ts' scrollTo={69} highlight={[70, 72]} frame={[[-10, -5], [10, 5]]} />,
+    ]
+  },
+  'binding attributes': {
+    draw: Title({ drawingHint: true, color }),
+    overlay: [
+      COLOR_PICKER,
+      <Code key='points.basic.vert' src='points.basic.vert' frame={GRID_2x2[0][0]} />,
+      <Code key='points.basic.frag' src='points.basic.frag' frame={GRID_2x2[0][1]} />,
+      <Code key='points.ts' src='points.ts' scrollTo={79} highlight={[81, 85]} frame={[[-10, -5], [10, 5]]} />,
+    ]
+  },
+  'draw it': {
+    draw: Title({ drawingHint: true, color }),
+    overlay: [
+      COLOR_PICKER,
+      <Code key='points.basic.vert' src='points.basic.vert' frame={GRID_2x2[0][0]} />,
+      <Code key='points.basic.frag' src='points.basic.frag' frame={GRID_2x2[0][1]} />,
+      <Code key='points.ts' src='points.ts' scrollTo={79} highlight={[109, 113]} frame={[[-10, -5], [10, 5]]} />,
+    ]
+  },
   'litebrite mode': {
     draw: Title({ node: 'litebrite', color }),
     overlay: COLOR_PICKER,  
