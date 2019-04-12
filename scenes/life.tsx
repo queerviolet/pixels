@@ -13,9 +13,10 @@ import isTablet from '../view-mode'
 import Bleed from './bleed.evaluator'
 
 const life = require('./life.frag')
+const randomColor = () => [Math.random(), Math.random(), Math.random(), 1.0]
 
 let currentSampler: Sampler = asSampler(lighthouse)
-let currentSrc = lighthouse
+let currentSrc: any = randomColor
 const color: Sampler = (x, y) => currentSampler(x, y)
 
 const ImagePicker = ({ imgs=[hills, lighthouse, pier] }) => {
@@ -32,7 +33,9 @@ const ImagePicker = ({ imgs=[hills, lighthouse, pier] }) => {
         ...imgs,
         [1, 1, 1, 1],
         [0, 0, 0, 1],
-        () => [Math.random(), Math.random(), Math.random(), 1.0],
+        [1, 0, 1, 1],
+        [0, 1, 1, 1],
+        randomColor,
       ]} />
     <img src={src} className='hint' />
   </>
@@ -89,10 +92,11 @@ function SignOff(props?, cell?: Cell) {
             uApplyForce: 1.0,
             uApplyColor: 1.0,
             uApplyPosition: 1.0,
-            uApplyOpacity: 0.5,
+            uApplyOpacity: 0,
+            uScale: BuildIn({ beat: 'life/sign_off', ms: 3000, from: 10, to: 1, }),
           })
-      }), opacity: BuildIn({ ms: 3000 }) },
-      { destination: output }
+      }), opacity: 1.0 },
+      { destination: output, additive: true }
     ])
   )
 }

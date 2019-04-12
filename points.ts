@@ -18,6 +18,7 @@ export interface Props {
   uApplyForce?: number
   uApplyColor?: number
   uApplyOpacity?: number
+  uScale?: number
 }
 
 export default function Points(props: Props, cell?: Cell) {
@@ -30,6 +31,7 @@ export default function Points(props: Props, cell?: Cell) {
       uniform float uApplyForce;
       uniform float uApplyColor;
       uniform float uApplyOpacity;
+      uniform float uScale;
 
       attribute float index;
       
@@ -42,9 +44,9 @@ export default function Points(props: Props, cell?: Cell) {
       }
 
       void main() {
-        // gl_Position = uProjection * vec4(mix(pos_from_index(), pos, uApplyPosition), 0.0, 1.0);
+        // gl_Position = uProjection * vec4(mix(pos_from_index(), scaledPos, uApplyPosition), 0.0, 1.0);
         // gl_PointSize = mix(5.0, 5.0 * force * 7.0, uApplyForce);
-        transform();
+        transform(uScale);
         gl_Position = mix(pos_from_index(), gl_Position, uApplyPosition);
         gl_PointSize = mix(20.0, gl_PointSize, uApplyForce);
         vColor = mix(vec4(pos.x, force, pos.y, 1.0), vColor, uApplyColor);
@@ -80,8 +82,9 @@ export default function Points(props: Props, cell?: Cell) {
     uApplyForce: props.uApplyForce || 0,
     uApplyColor: props.uApplyColor || 0,
     uApplyOpacity: props.uApplyOpacity || 0,
+    uScale: props.uScale || 1,
   }))
-  if (!uniforms) return 
+  if (!uniforms) return
 
   const params: any = {
     vertexArray: shader.vertexArray,
