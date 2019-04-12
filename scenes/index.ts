@@ -42,6 +42,7 @@ export type Beat = Navigable & {
   draw: Pattern
   overlay?: ReactElement | ReactElement[]
   note?: string
+  fadeMs?: number
 }
 
 type Script = {

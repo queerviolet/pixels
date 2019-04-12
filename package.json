@@ -12,6 +12,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "anim": "0.0.1",
     "buffers": "^0.1.1",
     "contexts": "0.0.0",
     "dedent": "^0.7.0",

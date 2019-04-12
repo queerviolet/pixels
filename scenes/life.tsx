@@ -39,23 +39,80 @@ const ImagePicker = ({ imgs=[hills, lighthouse, pier] }) => {
 }
 
 export default {
+  lowrez_life: {
+    draw: Stack({ node: 'game-of-life-stacked', octaves: [5], color }),
+    overlay: <ImagePicker key='IMAGE_PICKER' />,
+  },
+  higher_life: {
+    draw: Stack({ node: 'game-of-life-stacked', octaves: [3], color }),
+    overlay: <ImagePicker key='IMAGE_PICKER' />,
+  },
   stacked_life: {
-    draw: Stack({ node: 'game-of-life-stacked', color }),
+    draw: Stack({ node: 'game-of-life-stacked', octaves: [0, 2, 3, 4], color }),
+    overlay: <ImagePicker key='IMAGE_PICKER' />,
+  },
+  everything_comes_alive: {
+    overlay: <div key='white' className='white' />,
+    fadeMs: 3000,
+  },
+  sign_off: {
+    draw: SignOff({ color }),
     overlay: <ImagePicker key='IMAGE_PICKER' />,
   },
 }
 
+function SignOff(props?, cell?: Cell) {
+  if (!cell) return Seed(SignOff, props)
+  const { output } = props
+  if (!output) return
+
+  const paint = $Child(
+    PaintStroke({
+      node: 'title',
+      batchSize: 80,
+      deltaColor: props.deltaColor,
+    })
+  )
+  paint && paint(output)
+
+  const livingSig = DrawTexture({
+    draw: Stack({ node: 'title', color })
+  })
+
+  $(
+    Layers([
+      { output: livingSig, opacity: 1 },
+      { output: DrawTexture({
+        draw:
+          Points({
+            node: 'title',
+            uApplyForce: 1.0,
+            uApplyColor: 1.0,
+            uApplyPosition: 1.0,
+            uApplyOpacity: 0.5,
+          })
+      }), opacity: BuildIn({ ms: 3000 }) },
+      { destination: output }
+    ])
+  )
+}
+
 function Stack(props?, cell?: Cell) {
   if (!cell) return Seed(Stack, props)
-  const { node, output, color } = props
+  const { node, output, color, octaves=[0, 2, 3, 4] } = props
+  
+  $(RecordStroke({ node, color }))
 
-  return $(
+  $(
     Layers([
-      { output: Life({ node, color }), opacity: 1.0 },
-      { output: Life({ node, color, octave: 2 }), opacity: 1.0 },
-      { output: Life({ node, color, octave: 3 }), opacity: 1.0 },
-      { output: Life({ node, color, octave: 4 }), opacity: 1.0 },
-      { destination: output }
+      ...octaves.map(octave => ({
+        output: Life({ node, color, octave }), opacity: 1.0
+      })),
+      
+      // { output: Life({ node, color, octave: 2 }), opacity: 1.0 },
+      // { output: Life({ node, color, octave: 3 }), opacity: 1.0 },
+      // { output: Life({ node, color, octave: 4 }), opacity: 1.0 },
+      { destination: output },
     ])
   )
 }
@@ -63,14 +120,12 @@ function Stack(props?, cell?: Cell) {
 function Life(props?, cell?: Cell) { 
   if (!cell) return Seed(Life, props)
   const { node, color, octave=0 } = props
-
   const factor = 2 ** -octave;
 
   const gl = $(GLContext)
   if (!gl) return 
   const { drawingBufferWidth: w, drawingBufferHeight: h } = gl
 
-  $(RecordStroke({ node, color }))
   const bleed = $Child(
     Rumination({
       uniforms: { uStep: 0.001, },
@@ -98,11 +153,14 @@ function Life(props?, cell?: Cell) {
 }
 
 
-import { Cell, Seed, $, $Child } from '../loop'
+import { Cell, Seed, $, $Child, withProps } from '../loop'
 import RecordStroke from '../record-stroke'
 import Rumination from '../rumination'
 import Shader from '../shader'
 import PaintStroke from '../paint-stroke'
 import Layers from '../layers'
 import { GLContext } from '../contexts'
+import DrawTexture from '../draw-texture'
+import Points from '../points'
+import { BuildIn } from '../anim'
 

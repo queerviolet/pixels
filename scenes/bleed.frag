@@ -25,10 +25,5 @@ vec4 bleed() {
 }
 
 void main() {
-  vec4 self = texture2D(uInput, vec2(vPosition));
-  vec4 bleedColor = bleed();
-  gl_FragColor = vec4(
-    ((bleedColor + self) / 2.0).rgb,
-    bleedColor.a
-  );
+  gl_FragColor = bleed();
 }

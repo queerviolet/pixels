@@ -19,6 +19,8 @@ import { BuildIn } from '../anim'
 import Layers from '../layers'
 import DrawTexture from '../draw-texture'
 
+import Title from './title.evaluator'
+
 let currentSampler: Sampler = () => [1, 1, 1, 1]
 const color: Sampler = (x, y) => currentSampler(x, y)
 
@@ -35,7 +37,7 @@ const COLOR_PICKER = isTablet ? <Picker
 
 export default {
   [`I'm going to paint you something`]: {
-    draw: Title({ drawingHint: true }),
+    draw: Title({ drawingHint: true, color }),
     overlay: COLOR_PICKER,
     note: `
       I'm going to draw you something.
@@ -49,26 +51,26 @@ export default {
     `
   },
   force: {
-    draw: Title({ drawingHint: true }),
+    draw: Title({ drawingHint: true, color }),
     overlay: COLOR_PICKER,
   },
   position: {
-    draw: Title({ drawingHint: true }),
+    draw: Title({ drawingHint: true, color }),
     overlay: COLOR_PICKER,
   },
   color: {
-    draw: Title({ drawingHint: true }),
+    draw: Title({ drawingHint: true, color }),
     overlay: COLOR_PICKER,
   },
   [`vertex shader`]: {
-    draw: Title({ drawingHint: true }),
+    draw: Title({ drawingHint: true, color }),
     overlay: [
       COLOR_PICKER,
       <Code key='points.basic.vert' src='points.basic.vert' frame={GRID_2x2[0][0]} />,
     ]
   },
   [`fragment shader`]: {
-    draw: Title({ drawingHint: true }),
+    draw: Title({ drawingHint: true, color }),
     overlay: [
       COLOR_PICKER,
       <Code key='points.basic.vert' src='points.basic.vert' frame={GRID_2x2[0][0]} />,
@@ -76,15 +78,15 @@ export default {
     ]
   },
   'litebrite mode': {
-    draw: Title({ node: 'litebrite' }),
+    draw: Title({ node: 'litebrite', color }),
     overlay: COLOR_PICKER,  
   },
   opacity: {
-    draw: Title({ node: 'litebrite' }),
+    draw: Title({ node: 'litebrite', color }),
     overlay: COLOR_PICKER,
   },
   'opacity with code': {
-    draw: Title({ node: 'litebrite' }),
+    draw: Title({ node: 'litebrite', color }),
     overlay: [
       COLOR_PICKER,
       <Code key='points.withOpacity.vert' src='points.withOpacity.vert' frame={GRID_2x2[0][0]} />,
@@ -92,43 +94,3 @@ export default {
   }
 }
  
-function Title(props: { node?: string, drawingHint?: boolean, output?: any }={}, cell?: Cell) {
-  if (!cell) return Seed(Title, props)
-  const {node='title'} = props
-  cell.read(RecordStroke({
-    node,
-    color
-  }))
-  
-  if (!props.output) return
-
-  return cell.read(Layers([
-    {
-      output: DrawTexture({
-        draw:
-          Points({
-            node,
-            uApplyForce: BuildIn({ beat: 'title/force' }),
-            uApplyColor: BuildIn({ beat: 'title/position' }),
-            uApplyPosition: BuildIn({ beat: 'title/color', ms: 3000 }),
-            uApplyOpacity: BuildIn({ beat: 'title/opacity' }),
-          })
-      }),
-      opacity: isTablet ? 0.5 : 1.0,
-    },
-    isTablet && props.drawingHint && {
-      output: DrawTexture({
-        draw:
-          Points({
-            node,
-            output: props.output,      
-            uApplyPosition: 1.0,
-            uApplyForce: 1.0,
-            uApplyColor: 1.0,
-          })
-      }),
-      opacity: 1.0
-    },
-    { destination: props.output }
-  ]))
-}

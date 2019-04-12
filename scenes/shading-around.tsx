@@ -61,7 +61,6 @@ const withCode = (shader: { [name: string]: string }, node='batanes', props={}) 
     },
   }
 }
-import { frame } from '../stage'
 
 export default {
   ...withCode({blur}),

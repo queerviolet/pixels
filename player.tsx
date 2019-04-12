@@ -153,7 +153,7 @@ export default function Player({ play }: Props) {
         if (!state) return
         const { current, prev } = state
 
-        const opacity = cell.read(BuildIn({ beat: current.id, ms: 300 }))
+        const opacity = cell.read(BuildIn({ beat: current.id, ms: current.fadeMs || 300 }))
         if (typeof opacity !== 'number') return
 
         const currentFb = cell.read(DrawTexture({ draw: current && current.draw }))
@@ -168,8 +168,8 @@ export default function Player({ play }: Props) {
     }</Eval>
     <ReactCSSTransitionGroup
       transitionName='beat'
-      transitionEnterTimeout={700}
-      transitionLeaveTimeout={700}
+      transitionEnterTimeout={3000}
+      transitionLeaveTimeout={3000}
     >{
       state.current.overlay ? state.current.overlay : null
     }</ReactCSSTransitionGroup>

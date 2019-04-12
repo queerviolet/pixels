@@ -30,6 +30,7 @@ export function VertexArrayBuffer(props: WithData, cell?: Cell) {
   if (!cell) return Seed(VertexArrayBuffer, props)
   const gl = cell.read(GLContext)
   const client = cell.read(DataContext)
+  if (!client) return
   const { node, column, dtype } = parseColumn(props.data)
   const key = `Vertex Array Buffer for ${props.data}`
   return cell.effect<Stream>(key, _ => {
@@ -67,6 +68,7 @@ export function IndexBuffer(props: { for: Stream }, cell?: Cell) {
 export function QueueBuffer(props: WithData, cell?: Cell) {
   if (!cell) return Seed(QueueBuffer, props)
   const client = cell.read(DataContext)
+  if (!client) return
   const { node, column, dtype } = parseColumn(props.data)
   const key = `Queue Buffer for ${props.data}`
   return cell.effect<typeof dtype.ArrayType[]>(key, _ => {

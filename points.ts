@@ -36,9 +36,9 @@ export default function Points(props: Props, cell?: Cell) {
       ${basicVs}
 
       vec4 pos_from_index() {
-        float i = index / 128.0;
+        float i = index / 32.0;
         float f = floor(i);
-        return uProjection * vec4(vec2(f / 2.0, 15.0 * (i - f)) - vec2(15.0, 8.0), 0.0, 1.0);
+        return uProjection * vec4(vec2(f / 2.0, 16.0 * (i - f)) - vec2(15.0, 8.0), 0.0, 1.0);
       }
 
       void main() {
@@ -46,7 +46,7 @@ export default function Points(props: Props, cell?: Cell) {
         // gl_PointSize = mix(5.0, 5.0 * force * 7.0, uApplyForce);
         transform();
         gl_Position = mix(pos_from_index(), gl_Position, uApplyPosition);
-        gl_PointSize = mix(5.0, gl_PointSize, uApplyForce);
+        gl_PointSize = mix(20.0, gl_PointSize, uApplyForce);
         vColor = mix(vec4(pos.x, force, pos.y, 1.0), vColor, uApplyColor);
         vColor = mix(vec4(vColor.rgb, 1.0), vColor, uApplyOpacity);
       }

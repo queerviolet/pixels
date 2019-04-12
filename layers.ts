@@ -10,6 +10,7 @@ export type Layer = {
   output?: Texture2D
   opacity?: number
   destination?: Framebuffer
+  additive?: boolean
 }
 
 const STAGE_SHADER = Shader({
@@ -55,13 +56,16 @@ export default function Layers(layers: Layer[], cell?: Cell) {
 
   const last = layers[layers.length - 1]
   let framebuffer = undefined
+  let blendFunc = [GL.SRC_ALPHA, GL.DST_ALPHA]
   if (last && last.destination) {
     framebuffer = last.destination
   }
+  if (last && last.additive)
+    blendFunc = [GL.ONE, GL.ONE]
 
   withParameters(gl, {
     [GL.BLEND]: true,
-    blendFunc: [GL.SRC_ALPHA, GL.DST_ALPHA],
+    blendFunc,
     framebuffer
   }, () => {
     // TODO: Invalidate framebuffers when we draw to
@@ -97,4 +101,5 @@ export default function Layers(layers: Layer[], cell?: Cell) {
       })    
     }
   })
+  return framebuffer
 }
