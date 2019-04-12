@@ -46,6 +46,7 @@ canvas {
 
 .fixed-bar-1 {
   position: fixed;
+  z-index: 800;
   top: var(--letterbox-bars-1-top);
   left: var(--letterbox-bars-1-left);
   bottom: var(--letterbox-bars-1-bottom);
@@ -84,6 +85,7 @@ img.hint {
 .notes {
   .monospace();
   position: fixed;
+  z-index: 1000;
   background: #111;
   height: var(--letterbox-bars-0-height);
   width: calc(var(--letterbox-bars-0-width) - 10vw);

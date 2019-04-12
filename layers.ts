@@ -57,8 +57,10 @@ export default function Layers(layers: Layer[], cell?: Cell) {
   const last = layers[layers.length - 1]
   let framebuffer = undefined
   let blendFunc = [GL.SRC_ALPHA, GL.DST_ALPHA]
+  let viewport = [0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight]
   if (last && last.destination) {
     framebuffer = last.destination
+    viewport = [0, 0, framebuffer.width, framebuffer.height]
   }
   if (last && last.additive)
     blendFunc = [GL.ONE, GL.ONE]
@@ -90,6 +92,7 @@ export default function Layers(layers: Layer[], cell?: Cell) {
           ? layer.opacity
           :
           1.0
+      gl.viewport(...viewport)
       stage.program.draw({
         vertexArray: stage.vertexArray,
         vertexCount: uCount,

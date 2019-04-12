@@ -61,7 +61,7 @@ export default {
   sign_off: {
     draw: SignOff({ color }),
     overlay: <ImagePicker key='IMAGE_PICKER' />,
-  },
+  },  
 }
 
 function SignOff(props?, cell?: Cell) {
@@ -104,6 +104,7 @@ function SignOff(props?, cell?: Cell) {
 function Stack(props?, cell?: Cell) {
   if (!cell) return Seed(Stack, props)
   const { node, output, color, octaves=[0, 2, 3, 4] } = props
+  if (!output) return
   
   $(RecordStroke({ node, color }))
 
@@ -128,7 +129,7 @@ function Stack(props?, cell?: Cell) {
     bufs.push(l.dst)
   }
 
-  if (!ready) return
+  if (!ready) { cell.get('stack is not ready').write($(Clock)); return }
 
   paint && paint(...bufs)
 
@@ -162,16 +163,6 @@ function Life(props?, cell?: Cell) {
   )  
   if (!bleed) return
 
-  // const paint = $Child(
-  //   PaintStroke({
-  //     node,
-  //     batchSize: 80,
-  //     deltaColor: props.deltaColor,
-  //   })
-  // )
-
-  // paint && paint(bleed.dst)
-
   return bleed
 }
 
@@ -182,7 +173,7 @@ import Rumination from '../rumination'
 import Shader from '../shader'
 import PaintStroke from '../paint-stroke'
 import Layers from '../layers'
-import { GLContext } from '../contexts'
+import { GLContext, Clock } from '../contexts'
 import DrawTexture from '../draw-texture'
 import Points from '../points'
 import { BuildIn } from '../anim'
