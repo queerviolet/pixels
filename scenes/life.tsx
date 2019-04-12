@@ -103,15 +103,34 @@ function Stack(props?, cell?: Cell) {
   
   $(RecordStroke({ node, color }))
 
+  const layers = octaves.map(octave => ({
+    output: Life({ node, color, octave }), opacity: 1.0
+  }))
+
+  const paint = $Child(
+    PaintStroke({
+      node,
+      batchSize: 80,
+      deltaColor: props.deltaColor,
+    })
+  )
+
+  const bufs = []
+  let ready = true
+  let i = layers.length; while (i --> 0) {
+    const l = $(layers[i].output)
+    if (!l) { ready = false; continue }
+    bufs.push(l.input)
+    bufs.push(l.dst)
+  }
+
+  if (!ready) return
+
+  paint && paint(...bufs)
+
   $(
     Layers([
-      ...octaves.map(octave => ({
-        output: Life({ node, color, octave }), opacity: 1.0
-      })),
-      
-      // { output: Life({ node, color, octave: 2 }), opacity: 1.0 },
-      // { output: Life({ node, color, octave: 3 }), opacity: 1.0 },
-      // { output: Life({ node, color, octave: 4 }), opacity: 1.0 },
+      ...layers,
       { destination: output },
     ])
   )
@@ -139,15 +158,15 @@ function Life(props?, cell?: Cell) {
   )  
   if (!bleed) return
 
-  const paint = $Child(
-    PaintStroke({
-      node,
-      batchSize: 80,
-      deltaColor: props.deltaColor,
-    })
-  )
+  // const paint = $Child(
+  //   PaintStroke({
+  //     node,
+  //     batchSize: 80,
+  //     deltaColor: props.deltaColor,
+  //   })
+  // )
 
-  paint && paint(bleed.dst)
+  // paint && paint(bleed.dst)
 
   return bleed
 }

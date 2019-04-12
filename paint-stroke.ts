@@ -60,8 +60,7 @@ export default function PaintStroke(props: PaintStrokeProps, cell?: StrokeCell) 
   const uProjection = cell.read(Camera.uProjection)
   if (!uProjection) return
 
-  return (framebuffer: Framebuffer) => {
-    gl.viewport(0, 0, framebuffer.width, framebuffer.height)
+  return (...framebuffers: Framebuffer[]) => {
 
     if (!cone || !pos || !force || !color) return
     let batch = Math.min(batchSize, pos.length, force.length, color.length)
@@ -81,15 +80,18 @@ export default function PaintStroke(props: PaintStrokeProps, cell?: StrokeCell) 
         uColor = Float32Array.from([x1 - x0, y1 - y0, 0, 0])
       }
 
-      cone.draw({
-        uniforms: {
-          uProjection,
-          uPos,
-          uForce,
-          uColor,
-        },
-        framebuffer
-      })
+      for (const framebuffer of framebuffers) {
+        gl.viewport(0, 0, framebuffer.width, framebuffer.height)
+        cone.draw({
+          uniforms: {
+            uProjection,
+            uPos,
+            uForce,
+            uColor,
+          },
+          framebuffer
+        })
+      }
     }
     if (pos.length || force.length || color.length) cell.read(Clock)
   }
