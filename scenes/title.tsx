@@ -40,17 +40,32 @@ export default {
     draw: Title({ drawingHint: true, color }),
     overlay: COLOR_PICKER,
     note: `
-      I'm going to draw you something.
+      Hi everyone.
 
-      * ...draw, draw, draw... *
-      * look at screen *
+      So, the screen is black, you may have noticed. And
+      I just have to apologize. I had quite a time getting to
+      Amsterdam from Bangalore. They reposessed my plane.
 
-      Oh yeah, looks great.
+      I mean, not my plane. Obviously.
 
-      * ...draw, draw, draw... *
+      But I didn't know you *could* repossess a plane? I didn't
+      know that's a thing that happened? But it totally is.
+      And it totally can. And without a plane, you're not flying
+      anywhere.
+
+      So, I had to take another flight, it went through London.
+
+      Anyway, long story short... this first slide isn't really
+      ready. Do you mind if I just...
+      
+      I'm just going to draw it right now.  
     `
   },
   force: {
+    draw: Title({ drawingHint: true, color }),
+    overlay: COLOR_PICKER,
+  },
+  color: {
     draw: Title({ drawingHint: true, color }),
     overlay: COLOR_PICKER,
   },
@@ -58,9 +73,22 @@ export default {
     draw: Title({ drawingHint: true, color }),
     overlay: COLOR_PICKER,
   },
-  color: {
+  card: {
     draw: Title({ drawingHint: true, color }),
-    overlay: COLOR_PICKER,
+    overlay:
+      <div key='title-card' className='title-card'>
+        <div className='floatey'>
+          <span className='txt'>ashi krishnan</span>
+        </div>
+        <div className='floatey'>
+          <span className='txt'>@rakshesha</span>
+        </div>
+        <div className='floatey'>
+          <span className='txt'>
+            https://github.com/queerviolet/pixels
+          </span>
+        </div>
+      </div>
   },
   [`vertex shader`]: {
     draw: Title({ drawingHint: true, color }),

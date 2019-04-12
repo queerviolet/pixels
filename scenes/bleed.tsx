@@ -69,7 +69,14 @@ export default {
       These are actually three separate photos. I'm just using this selector,
       which you can't see, to pick which image I'm sampling colors from.
       So I can create this kindof glitchy watercolor collage effect.
-
+    `,
+    draw: Bleed({ node: 'batanes-start', color, fs }),
+    overlay: <ImagePicker imgs={[
+      hills, lighthouse, pier
+    ]} />, 
+  },
+  'Batanes out the oven': {
+    note: `
       We've seen the shader code driving this, which is basically the brain
       behind this whole thing.
       

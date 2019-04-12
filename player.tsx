@@ -114,6 +114,8 @@ export default function Player({ play }: Props) {
     return go({type: 'seek', beat})
   }, [go])
 
+  Object.assign(window, {next, prev, seek})
+
   useEffect(() => {
     addEventListener('keydown', onKeyDown)
     return () => removeEventListener('keydown', onKeyDown)
@@ -168,8 +170,8 @@ export default function Player({ play }: Props) {
     }</Eval>
     <ReactCSSTransitionGroup
       transitionName='beat'
-      transitionEnterTimeout={3000}
-      transitionLeaveTimeout={3000}
+      transitionEnterTimeout={600}
+      transitionLeaveTimeout={600}
     >{
       state.current.overlay ? state.current.overlay : null
     }</ReactCSSTransitionGroup>

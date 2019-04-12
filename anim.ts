@@ -8,8 +8,11 @@ interface AnimProps {
 export function BuildIn(props: AnimProps = {}, cell?: any) {
   if (!cell) return Seed(BuildIn, props)
   const { from=0.0, to=1.0, ms=1000 } = props
-  const prez = cell.read(Presentation.playState)  
-  const target = cell.read(Presentation.data).beats[props.beat]
+  const prez = cell.read(Presentation.playState)
+  if (!prez) return
+  const prezData = cell.read(Presentation.data)
+  if (!prezData) return
+  const target = prezData.beats[props.beat]
   if (!target) {
     console.error('Invalid beat:', props.beat)
     return

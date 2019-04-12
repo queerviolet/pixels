@@ -167,3 +167,77 @@ img.hint {
   right: 0;
   border-radius: 0 0 16px;
 }
+
+.title-card {
+  position: fixed;
+  top: calc(var(--letterbox-top) + 12 * var(--su));
+  left: calc(var(--letterbox-left) + 1 * var(--su));
+  font-size: calc(1 * var(--su));
+
+  &.beat-enter {
+    animation: fade-in 0.5s forwards;    
+  }
+
+  &.beat-leave {
+    animation: fade-in 0.5s forwards;
+    animation-direction: reverse;
+  }
+
+  > .floatey {
+    display: table;
+    background: fuchsia;
+    position: relative;
+    > .txt {
+      position: relative;
+      color: black;
+      text-shadow:
+        2px 2px 0 cyan,
+        // -2px -2px 0 black,
+        -2px 2px 0 yellow;
+    }
+    
+    &:first-of-type {
+      left: calc(0.4 * var(--su));
+    }
+
+    &:nth-of-type(2) {
+      left: calc(-0.2 * var(--su));
+    }
+    &:nth-of-type(3) {
+      left: calc(0.18 * var(--su));
+    }
+    // animation: float-ne 5s alternate-reverse infinite;
+  }
+}
+
+@keyframes float-a {
+  0% {
+    left: calc(0.4 * var(--su));
+  }
+
+  100% {
+    left: -10px;
+  }
+}
+
+
+@keyframes float-b {
+  0% {
+    left: calc(-0.2 * var(--su));
+  }
+
+  100% {
+    left: -10px;
+  }
+}
+
+
+@keyframes float-c {
+  0% {
+    left: calc(0.18 * var(--su));
+  }
+
+  100% {
+    left: -10px;
+  }
+}

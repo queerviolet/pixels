@@ -61,7 +61,26 @@ export default {
   sign_off: {
     draw: SignOff({ color }),
     overlay: <ImagePicker key='IMAGE_PICKER' />,
-  },  
+  },
+  end_card: {
+    draw: SignOff({ color }),
+    overlay: [
+      <ImagePicker key='IMAGE_PICKER' />,
+      <div key='title-card' className='title-card'>
+        <div className='floatey'>
+          <span className='txt'>ashi krishnan</span>
+        </div>
+        <div className='floatey'>
+          <span className='txt'>@rakshesha</span>
+        </div>
+        <div className='floatey'>
+          <span className='txt'>
+            https://github.com/queerviolet/pixels
+          </span>
+        </div>
+      </div>
+    ]
+  }
 }
 
 function SignOff(props?, cell?: Cell) {

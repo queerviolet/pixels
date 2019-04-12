@@ -1,7 +1,7 @@
 import { POINTS } from 'luma.gl/constants'
 import { withParameters } from 'luma.gl'
 
-import { Camera, GLContext } from './contexts'
+import { Camera, GLContext, Clock } from './contexts'
 import { Cell, Seed, ReadObject } from './loop'
 import Shader from './shader'
 import { VertexArrayBuffer, IndexBuffer } from './buffers'
@@ -24,6 +24,17 @@ export interface Props {
 export default function Points(props: Props, cell?: Cell) {
   if (!cell) return Seed(Points, props)
   const { node, drawMode=POINTS, } = props
+
+  let output = null
+  if (props.output) {
+    output = cell.read(props.output)
+    // params.framebuffer = output
+    props.output.clear({color: [0, 0, 0, 0]})
+  }
+
+  const gl = cell.read(GLContext)
+  if (!gl) return
+
 
   const shader = cell.read(Shader({
     vs: `
@@ -61,10 +72,11 @@ export default function Points(props: Props, cell?: Cell) {
   const color = cell.read(VertexArrayBuffer({ data: `${node}/color.vec4` }))
 
   if (!shader || !pos || !force || !color) return
-
+  
   const vertexCount = pos.count
+  if (!vertexCount) { cell.read(Clock); return }
   const index = cell.read(IndexBuffer({ for: VertexArrayBuffer({ data: `${node}/pos.vec2` }) }))
-  if (!index || !vertexCount) return
+  if (!index ) { cell.read(Clock); return }
 
   shader.vertexArray.setAttributes({
     pos: pos.buffer,
@@ -74,7 +86,7 @@ export default function Points(props: Props, cell?: Cell) {
   })
 
   const uProjection = cell.read(Camera.uProjection)
-  if (!uProjection) return
+  if (!uProjection) { cell.read(Clock); return }
 
   const uniforms = cell.read(ReadObject({
     uProjection: Camera.uProjection,
@@ -86,22 +98,13 @@ export default function Points(props: Props, cell?: Cell) {
   }))
   if (!uniforms) return
 
+
   const params: any = {
     vertexArray: shader.vertexArray,
     vertexCount,
     drawMode,
-    uniforms,    
+    uniforms,
   }
-
-  let output = null
-  if (props.output) {
-    output = cell.read(props.output)
-    // params.framebuffer = output
-    props.output.clear({color: [0, 0, 0, 0]})
-  }
-
-  const gl = cell.read(GLContext)
-  if (!gl) return
 
   withParameters(gl, {
     [gl.BLEND]: true,

@@ -41,9 +41,9 @@ export function VertexArrayBuffer(props: WithData, cell?: Cell) {
     const disconnect = client.connect(listener, 'Vertex Array Buffer')
 
     return stream => {
-      disconnect()
-      unsubscribe()
-      stream && stream.clear()
+      // disconnect()
+      // unsubscribe()
+      // stream && stream.clear()
     }
   }, [props.data])
 }

@@ -19,6 +19,8 @@ import { BuildIn } from '../anim'
 import Layers from '../layers'
 import DrawTexture from '../draw-texture'
 
+import { Clock } from '../contexts'
+
 export default function Title(props: { node?: string, color?: any, drawingHint?: boolean, output?: any }={}, cell?: Cell) {
   if (!cell) return Seed(Title, props)
   const {node='title', color} = props
@@ -27,7 +29,7 @@ export default function Title(props: { node?: string, color?: any, drawingHint?:
     color
   }))
   
-  if (!props.output) return
+  if (!props.output) { cell.read(Clock); return }
 
   return cell.read(Layers([
     {
@@ -36,8 +38,8 @@ export default function Title(props: { node?: string, color?: any, drawingHint?:
           Points({
             node,
             uApplyForce: BuildIn({ beat: 'title/force' }),
-            uApplyColor: BuildIn({ beat: 'title/position' }),
-            uApplyPosition: BuildIn({ beat: 'title/color', ms: 3000 }),
+            uApplyColor: BuildIn({ beat: 'title/color' }),
+            uApplyPosition: BuildIn({ beat: 'title/position', ms: 3000 }),
             uApplyOpacity: BuildIn({ beat: 'title/opacity' }),
           })
       }),
