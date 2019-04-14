@@ -72,7 +72,8 @@ export default {
     `,
     draw: Bleed({ node: 'batanes-start', color, fs }),
     overlay: <ImagePicker imgs={[
-      hills, lighthouse, pier
+      hills, lighthouse, pier, require('../bali.jpg'),
+      () => [0, 0, 0, 0]
     ]} />, 
   },
   'Batanes out the oven': {
